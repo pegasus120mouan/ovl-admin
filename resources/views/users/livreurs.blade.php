@@ -76,31 +76,103 @@
           <table class="table table-striped table-hover">
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Nom</th>
                 <th>Prénoms</th>
                 <th>Contact</th>
                 <th>Login</th>
-                <th>Statut</th>
+                <th>Statut compte</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               @forelse($livreurs as $livreur)
                 <tr>
+                  @php
+                    $localFallbackAvatarUrl = asset('dist/img/user2-160x160.jpg');
+                    $defaultPhotoKey = 'livreurs/livreur.png';
+                    $defaultLivreurAvatarUrl = $localFallbackAvatarUrl;
+
+                    try {
+                      $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                      try {
+                        $defaultLivreurAvatarUrl = $disk->temporaryUrl($defaultPhotoKey, now()->addMinutes(30));
+                      } catch (\Exception $e) {
+                        $defaultLivreurAvatarUrl = $disk->url($defaultPhotoKey);
+                      }
+                    } catch (\Throwable $e) {
+                      $defaultLivreurAvatarUrl = $localFallbackAvatarUrl;
+                    }
+
+                    $livreurPhotoUrl = $defaultLivreurAvatarUrl;
+
+                    $photoKey = $livreur->avatar ?? null;
+                    if (!$photoKey || $photoKey === 'default.jpg') {
+                      $photoKey = $defaultPhotoKey;
+                    } elseif (!str_contains($photoKey, '/')) {
+                      $photoKey = 'livreurs/' . $photoKey;
+                    }
+
+                    if ($photoKey) {
+                      try {
+                        $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                        try {
+                          $livreurPhotoUrl = $disk->temporaryUrl($photoKey, now()->addMinutes(30));
+                        } catch (\Exception $e) {
+                          $livreurPhotoUrl = $disk->url($photoKey);
+                        }
+                      } catch (\Throwable $e) {
+                        $livreurPhotoUrl = $defaultLivreurAvatarUrl;
+                      }
+                    }
+                  @endphp
+                  <td>
+                    <a href="{{ route('users.livreurs.show', $livreur) }}" style="display: inline-block;">
+                      <img src="{{ $livreurPhotoUrl }}" alt="Photo" class="img-circle" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.onerror=null;this.src='{{ $defaultLivreurAvatarUrl }}';">
+                    </a>
+                  </td>
                   <td>{{ $livreur->nom }}</td>
                   <td>{{ $livreur->prenoms }}</td>
                   <td>{{ $livreur->contact }}</td>
-                  <td>{{ $livreur->login }}</td>
-                  <td>
+                  <td class="p-0 align-middle">
                     @if($livreur->statut_compte)
-                      <span class="badge badge-success">Actif</span>
+                      <a href="{{ route('users.livreurs.commandes', $livreur) }}" class="btn btn-secondary btn-sm btn-block" style="border-radius: 0;">
+                        {{ $livreur->login }}
+                      </a>
                     @else
-                      <span class="badge badge-danger">Inactif</span>
+                      <button type="button" class="btn btn-secondary btn-sm btn-block" style="border-radius: 0;" disabled>
+                        {{ $livreur->login }}
+                      </button>
                     @endif
+                  </td>
+                  <td>
+                    <form action="{{ route('users.livreurs.toggle-statut', $livreur) }}" method="POST" class="d-inline">
+                      @csrf
+                      @method('PATCH')
+                      @if($livreur->statut_compte)
+                        <button type="submit" class="btn btn-success btn-sm" style="min-width: 90px;">Actif</button>
+                      @else
+                        <button type="submit" class="btn btn-danger btn-sm" style="min-width: 90px;">Inactif</button>
+                      @endif
+                    </form>
+                  </td>
+                  <td>
+                    <a href="{{ route('users.livreurs.show', $livreur) }}" class="text-primary mr-2" title="Modifier">
+                      <i class="fas fa-pen"></i>
+                    </a>
+
+                    <form action="{{ route('users.livreurs.destroy', $livreur) }}" method="POST" class="d-inline" onsubmit="return confirm('Supprimer ce livreur ?');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn btn-link p-0 text-danger" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="5" class="text-center">Aucun livreur trouvé</td>
+                  <td colspan="7" class="text-center">Aucun livreur trouvé</td>
                 </tr>
               @endforelse
             </tbody>

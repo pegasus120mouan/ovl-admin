@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Boutique;
+use App\Models\Commande;
+use App\Models\CoutLivraison;
 use App\Models\Utilisateur;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -252,7 +254,26 @@ class UtilisateurController extends Controller
             'statut_compte' => 'nullable|boolean',
         ]);
 
-        Utilisateur::create([
+        $pin = null;
+        for ($i = 0; $i < 10; $i++) {
+            $candidate = (string) random_int(100000, 999999);
+
+            $exists = Utilisateur::query()
+                ->where('role', 'livreur')
+                ->where('code_pin', $candidate)
+                ->exists();
+
+            if (!$exists) {
+                $pin = $candidate;
+                break;
+            }
+        }
+
+        if (!$pin) {
+            $pin = (string) random_int(100000, 999999);
+        }
+
+        $livreur = Utilisateur::create([
             'nom' => $validated['nom'],
             'prenoms' => $validated['prenoms'],
             'contact' => $validated['contact'],
@@ -260,8 +281,15 @@ class UtilisateurController extends Controller
             'password' => hash('sha256', $validated['password']),
             'role' => 'livreur',
             'statut_compte' => $validated['statut_compte'] ?? 1,
-            'avatar' => 'utilisateurs/utilisateurs.png',
+            'avatar' => 'livreur.png',
+            'code_pin' => $pin,
         ]);
+
+        try {
+            SmsService::sendPin($livreur->contact, $pin, $livreur->nom, $livreur->prenoms);
+        } catch (\Throwable $e) {
+            // On ne bloque pas la création si l'envoi SMS échoue
+        }
 
         return redirect()->route('users.livreurs')->with('success', 'Livreur ajouté avec succès');
     }
@@ -387,5 +415,170 @@ class UtilisateurController extends Controller
         $admin->save();
 
         return redirect()->route('users.administrateurs');
+    }
+
+    public function showLivreurWeb(Request $request, Utilisateur $livreur)
+    {
+        if (($livreur->role ?? null) !== 'livreur') {
+            abort(404);
+        }
+
+        $livreursTotal = Utilisateur::query()->where('role', 'livreur')->count();
+        $livreursActifs = Utilisateur::query()->where('role', 'livreur')->where('statut_compte', 1)->count();
+        $livreursInactifs = Utilisateur::query()->where('role', 'livreur')->where('statut_compte', 0)->count();
+        $boutiquesTotal = Boutique::count();
+
+        $avatarKey = $livreur->avatar ?: null;
+        if (!$avatarKey || $avatarKey === 'default.jpg') {
+            $avatarKey = 'livreurs/livreur.png';
+        } elseif (!str_contains($avatarKey, '/')) {
+            $avatarKey = 'livreurs/' . $avatarKey;
+        }
+
+        $disk = Storage::disk('s3');
+        try {
+            $avatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
+        } catch (\Exception $e) {
+            $avatarUrl = $disk->url($avatarKey);
+        }
+
+        return view('users.livreurs_profile', compact(
+            'livreur',
+            'avatarUrl',
+            'livreursTotal',
+            'livreursActifs',
+            'livreursInactifs',
+            'boutiquesTotal'
+        ));
+    }
+
+    public function updateLivreurWeb(Request $request, Utilisateur $livreur)
+    {
+        if (($livreur->role ?? null) !== 'livreur') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'nom' => 'sometimes|required|string|max:255',
+            'prenoms' => 'sometimes|required|string|max:255',
+            'contact' => 'sometimes|required|string|max:15',
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $livreur->id,
+            'password' => 'sometimes|nullable|string|min:4|confirmed',
+            'statut_compte' => 'sometimes|nullable|boolean',
+            'avatar' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'redirect_to' => 'sometimes|nullable|string',
+        ]);
+
+        $data = [];
+
+        if (array_key_exists('nom', $validated)) {
+            $data['nom'] = $validated['nom'];
+        }
+        if (array_key_exists('prenoms', $validated)) {
+            $data['prenoms'] = $validated['prenoms'];
+        }
+        if (array_key_exists('contact', $validated)) {
+            $data['contact'] = $validated['contact'];
+        }
+        if (array_key_exists('login', $validated)) {
+            $data['login'] = $validated['login'];
+        }
+        if (array_key_exists('statut_compte', $validated)) {
+            $data['statut_compte'] = $validated['statut_compte'];
+        }
+
+        if (!empty($validated['password'] ?? null)) {
+            $data['password'] = hash('sha256', $validated['password']);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $data['avatar'] = $request->file('avatar')->store('livreurs', 's3');
+        }
+
+        if (!empty($data)) {
+            $livreur->update($data);
+        }
+
+        $redirectTo = $request->input('redirect_to');
+        if (is_string($redirectTo) && $redirectTo !== '') {
+            return redirect()->to($redirectTo)->with('success', 'Livreur modifié avec succès');
+        }
+
+        return redirect()->route('users.livreurs')->with('success', 'Livreur modifié avec succès');
+    }
+
+    public function commandesLivreurWeb(Request $request, Utilisateur $livreur)
+    {
+        if (($livreur->role ?? null) !== 'livreur') {
+            abort(404);
+        }
+
+        $perPage = $request->integer('per_page', 20);
+
+        $now = now();
+        $monthLabel = $now->format('F');
+
+        $kpiQuery = Commande::query()
+            ->where('livreur_id', $livreur->id)
+            ->whereYear('date_reception', $now->year)
+            ->whereMonth('date_reception', $now->month);
+
+        $montantGlobal = (int) $kpiQuery->clone()->sum('cout_global');
+        $montantClients = (int) $kpiQuery->clone()->sum('cout_reel');
+        $gain = (int) $kpiQuery->clone()->sum('cout_livraison');
+        $nbreColisLivres = (int) $kpiQuery->clone()->where('statut', 'Livré')->count();
+
+        $livreurs = Utilisateur::query()
+            ->where('role', 'livreur')
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+
+        $coutsLivraison = CoutLivraison::all();
+        $boutiques = Boutique::with('utilisateurs')->get();
+
+        $commandes = Commande::query()
+            ->with(['client.boutique', 'livreur'])
+            ->where('livreur_id', $livreur->id)
+            ->orderByDesc('date_reception')
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('users.livreurs_commandes', compact(
+            'livreur',
+            'commandes',
+            'livreurs',
+            'coutsLivraison',
+            'boutiques',
+            'monthLabel',
+            'montantGlobal',
+            'montantClients',
+            'gain',
+            'nbreColisLivres'
+        ));
+    }
+
+    public function destroyLivreurWeb(Utilisateur $livreur)
+    {
+        if (($livreur->role ?? null) !== 'livreur') {
+            abort(404);
+        }
+
+        $livreur->delete();
+
+        return redirect()->route('users.livreurs')->with('success', 'Livreur supprimé avec succès');
+    }
+
+    public function toggleLivreurStatutWeb(Utilisateur $livreur)
+    {
+        if (($livreur->role ?? null) !== 'livreur') {
+            abort(404);
+        }
+
+        $livreur->statut_compte = !$livreur->statut_compte;
+        $livreur->save();
+
+        return redirect()->route('users.livreurs');
     }
 }

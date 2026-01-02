@@ -163,7 +163,10 @@
             <label class="font-weight-bold">Depenses du jour</label>
             <input type="number" class="form-control" name="depense" value="{{ $point->depense }}">
           </div>
-          <input type="hidden" name="date_commande" value="{{ $point->date_commande }}">
+          <div class="form-group">
+            <label class="font-weight-bold">Date</label>
+            <input type="date" class="form-control" name="date_commande" value="{{ $point->date_commande ? \Carbon\Carbon::parse($point->date_commande)->format('Y-m-d') : '' }}" required>
+          </div>
         </div>
         <div class="modal-footer justify-content-start">
           <button type="submit" class="btn btn-warning">Modifier</button>

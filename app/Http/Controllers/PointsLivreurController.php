@@ -9,6 +9,7 @@ use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PointsLivreurController extends Controller
 {
@@ -16,6 +17,9 @@ class PointsLivreurController extends Controller
     {
         $perPage = $request->get('per_page', 20);
         $date = $request->get('date');
+        $dateDebut = $request->get('date_debut');
+        $dateFin = $request->get('date_fin');
+        $utilisateurId = $request->get('utilisateur_id');
         
         // Points livreurs avec pagination
         $query = PointsLivreur::with('livreur');
@@ -24,6 +28,21 @@ class PointsLivreurController extends Controller
         if ($date) {
             $query->whereDate('date_commande', $date);
             $statsQuery->whereDate('date_commande', $date);
+        }
+
+        if ($dateDebut) {
+            $query->whereDate('date_commande', '>=', $dateDebut);
+            $statsQuery->whereDate('date_commande', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->whereDate('date_commande', '<=', $dateFin);
+            $statsQuery->whereDate('date_commande', '<=', $dateFin);
+        }
+
+        if ($utilisateurId) {
+            $query->where('utilisateur_id', $utilisateurId);
+            $statsQuery->where('utilisateur_id', $utilisateurId);
         }
         
         $pointsLivreurs = $query->orderBy('date_commande', 'desc')
@@ -48,6 +67,76 @@ class PointsLivreurController extends Controller
             'totalGain',
             'nombreLivreurs'
         ));
+    }
+
+    public function printDepot(Request $request)
+    {
+        $utilisateurId = $request->get('utilisateur_id');
+        $dateDebut = $request->get('date_debut');
+        $dateFin = $request->get('date_fin');
+
+        $request->validate([
+            'utilisateur_id' => 'required|integer',
+            'date_debut' => 'required|date',
+            'date_fin' => 'required|date',
+        ]);
+
+        if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->back()->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $livreur = Utilisateur::findOrFail($utilisateurId);
+
+        $commandesParJour = Commande::query()
+            ->where('livreur_id', $utilisateurId)
+            ->where('statut', 'Livré')
+            ->whereDate('date_livraison', '>=', $dateDebut)
+            ->whereDate('date_livraison', '<=', $dateFin)
+            ->selectRaw('DATE(date_livraison) as jour, SUM(cout_global) as montant_global')
+            ->groupBy('jour')
+            ->pluck('montant_global', 'jour');
+
+        $depensesParJour = PointsLivreur::query()
+            ->where('utilisateur_id', $utilisateurId)
+            ->whereDate('date_commande', '>=', $dateDebut)
+            ->whereDate('date_commande', '<=', $dateFin)
+            ->selectRaw('DATE(date_commande) as jour, SUM(depense) as depense')
+            ->groupBy('jour')
+            ->pluck('depense', 'jour');
+
+        $rows = [];
+        $period = \Carbon\CarbonPeriod::create(Carbon::parse($dateDebut), Carbon::parse($dateFin));
+        foreach ($period as $day) {
+            $jour = $day->format('Y-m-d');
+            $montantGlobal = (int) ($commandesParJour[$jour] ?? 0);
+            $depense = (int) ($depensesParJour[$jour] ?? 0);
+            $montantADeposer = $montantGlobal - $depense;
+
+            if ($montantGlobal === 0 && $depense === 0) {
+                continue;
+            }
+
+            $rows[] = [
+                'date' => $jour,
+                'montant_global' => $montantGlobal,
+                'depense' => $depense,
+                'montant_a_deposer' => $montantADeposer,
+            ];
+        }
+
+        $totalDepot = collect($rows)->sum('montant_a_deposer');
+
+        $pdf = Pdf::loadView('points_livreurs.print_depot', [
+            'livreur' => $livreur,
+            'rows' => $rows,
+            'dateDebut' => $dateDebut,
+            'dateFin' => $dateFin,
+            'totalDepot' => $totalDepot,
+        ]);
+
+        $fileName = 'Point_versements_' . Carbon::parse($dateDebut)->format('d-m-Y') . '_au_' . Carbon::parse($dateFin)->format('d-m-Y') . '_' . str_replace(' ', '_', trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? ''))) . '.pdf';
+
+        return $pdf->stream($fileName);
     }
 
     public function store(Request $request)

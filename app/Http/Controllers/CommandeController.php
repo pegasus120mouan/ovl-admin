@@ -75,6 +75,14 @@ class CommandeController extends Controller
         return view('commandes.non-livrees', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs'));
     }
 
+    public function edit(Request $request, Commande $commande)
+    {
+        $clients = Utilisateur::clients()->get();
+        $livreurs = Utilisateur::livreurs()->get();
+
+        return view('commandes.edit', compact('commande', 'clients', 'livreurs'));
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -83,14 +91,25 @@ class CommandeController extends Controller
             'communes' => 'required|string|max:255',
             'cout_global' => 'required|integer',
             'cout_livraison' => 'required|integer',
-            'cout_reel' => 'required|integer',
+            'cout_reel' => 'sometimes|nullable|integer',
             'statut' => 'nullable|string|max:255',
             'date_reception' => 'required|date',
             'date_livraison' => 'nullable|date',
             'date_retour' => 'nullable|date',
+            'redirect_to' => 'sometimes|nullable|string',
         ]);
 
+        if (!array_key_exists('cout_reel', $validated) || $validated['cout_reel'] === null || (int) $validated['cout_reel'] === 0) {
+            $validated['cout_reel'] = max(0, (int) $validated['cout_global'] - (int) $validated['cout_livraison']);
+        }
+
         $commande = Commande::create($validated);
+
+        $redirectTo = $request->input('redirect_to');
+        if (is_string($redirectTo) && $redirectTo !== '') {
+            return redirect()->to($redirectTo)->with('success', 'Commande enregistrée avec succès');
+        }
+
         return redirect()->route('commandes.index')->with('success', 'Commande enregistrée avec succès');
     }
 
@@ -107,12 +126,19 @@ class CommandeController extends Controller
             'communes' => 'sometimes|required|string|max:255',
             'cout_global' => 'sometimes|required|integer',
             'cout_livraison' => 'sometimes|required|integer',
-            'cout_reel' => 'sometimes|required|integer',
+            'cout_reel' => 'sometimes|nullable|integer',
             'statut' => 'nullable|string|max:255',
             'date_reception' => 'sometimes|required|date',
             'date_livraison' => 'nullable|date',
             'date_retour' => 'nullable|date',
+            'redirect_to' => 'sometimes|nullable|string',
         ]);
+
+        if (array_key_exists('cout_global', $validated) && array_key_exists('cout_livraison', $validated)) {
+            if (!array_key_exists('cout_reel', $validated) || $validated['cout_reel'] === null || (int) $validated['cout_reel'] === 0) {
+                $validated['cout_reel'] = max(0, (int) $validated['cout_global'] - (int) $validated['cout_livraison']);
+            }
+        }
 
         // Gérer les dates selon le statut
         if (isset($validated['statut'])) {
@@ -124,13 +150,29 @@ class CommandeController extends Controller
         }
 
         $commande->update($validated);
+
+        $redirectTo = $request->input('redirect_to');
+        if (is_string($redirectTo) && $redirectTo !== '') {
+            return redirect()->to($redirectTo)->with('success', 'Commande mise à jour avec succès');
+        }
+
         return redirect()->route('commandes.index')->with('success', 'Commande mise à jour avec succès');
     }
 
     public function destroy(Commande $commande)
     {
         $commande->delete();
-        return response()->json(null, 204);
+
+        if (request()->wantsJson()) {
+            return response()->json(null, 204);
+        }
+
+        $redirectTo = request()->input('redirect_to');
+        if (is_string($redirectTo) && $redirectTo !== '') {
+            return redirect()->to($redirectTo)->with('success', 'Commande supprimée avec succès');
+        }
+
+        return redirect()->back()->with('success', 'Commande supprimée avec succès');
     }
 
     public function getLivrees()
@@ -221,33 +263,53 @@ class CommandeController extends Controller
     public function print(Request $request)
     {
         $boutiqueId = $request->get('boutique_id');
+        $livreurId = $request->get('livreur_id');
         $date = $request->get('date');
-        
-        $boutique = Boutique::find($boutiqueId);
-        
-        // Récupérer les commandes du client pour la date sélectionnée (toutes les commandes)
-        // Inclure les commandes livrées (date_livraison) ET les commandes non livrées (date_reception)
-        $commandes = Commande::with(['client.boutique'])
-            ->whereHas('client.boutique', function($q) use ($boutiqueId) {
+
+        $boutique = null;
+        $livreur = null;
+
+        $commandesQuery = Commande::query()->with(['client.boutique', 'livreur']);
+
+        if ($livreurId) {
+            $livreur = Utilisateur::find($livreurId);
+            $commandesQuery->where('livreur_id', $livreurId);
+        } else {
+            $boutique = Boutique::find($boutiqueId);
+            $commandesQuery->whereHas('client.boutique', function($q) use ($boutiqueId) {
                 $q->where('id', $boutiqueId);
-            })
-            ->where(function($q) use ($date) {
-                $q->whereDate('date_livraison', $date)
-                  ->orWhere(function($q2) use ($date) {
-                      $q2->whereDate('date_reception', $date)
-                         ->where('statut', 'Non Livré');
-                  });
-            })
-            ->get();
-        
-        // Total uniquement pour les commandes livrées
-        $total = $commandes->where('statut', 'Livré')->sum('cout_global');
+            });
+        }
+
+        if ($livreurId) {
+            $commandes = $commandesQuery
+                ->where(function($q) use ($date) {
+                    $q->whereDate('date_livraison', $date)
+                      ->orWhere(function($q2) use ($date) {
+                          $q2->whereDate('date_reception', $date)
+                             ->where('statut', 'Non Livré');
+                      });
+                })
+                ->get();
+
+            // Total uniquement pour les commandes livrées
+            $total = $commandes->where('statut', 'Livré')->sum('cout_global');
+        } else {
+            $commandes = $commandesQuery
+                ->whereDate('date_livraison', $date)
+                ->where('statut', 'Livré')
+                ->get();
+
+            $total = $commandes->sum('cout_reel');
+        }
         
         // Générer le PDF
-        $pdf = Pdf::loadView('commandes.print', compact('commandes', 'boutique', 'date', 'total'));
+        $view = $livreurId ? 'commandes.print_livreur' : 'commandes.print';
+        $pdf = Pdf::loadView($view, compact('commandes', 'boutique', 'livreur', 'date', 'total'));
         
         // Nom du fichier
-        $fileName = 'Point_du_' . \Carbon\Carbon::parse($date)->format('d-m-Y') . '_de_' . str_replace(' ', '_', $boutique->nom ?? 'Client') . '.pdf';
+        $ownerName = $livreur ? trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? '')) : ($boutique->nom ?? 'Client');
+        $fileName = 'Point_du_' . \Carbon\Carbon::parse($date)->format('d-m-Y') . '_de_' . str_replace(' ', '_', $ownerName ?: 'Client') . '.pdf';
 
         return $pdf->stream($fileName);
     }

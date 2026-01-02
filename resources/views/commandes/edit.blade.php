@@ -35,6 +35,7 @@
                         <form action="{{ route('commandes.update', $commande) }}" method="POST">
                             @csrf
                             @method('PUT')
+                            <input type="hidden" name="redirect_to" value="{{ request('redirect_to') }}">
                             <div class="card-body">
                                 @if($errors->any())
                                     <div class="alert alert-danger">
@@ -141,7 +142,7 @@
                                 <button type="submit" class="btn btn-warning">
                                     <i class="fas fa-save"></i> Mettre à jour
                                 </button>
-                                <a href="{{ route('commandes.index') }}" class="btn btn-secondary">
+                                <a href="{{ request('redirect_to') ?: route('commandes.index') }}" class="btn btn-secondary">
                                     <i class="fas fa-times"></i> Annuler
                                 </a>
                             </div>

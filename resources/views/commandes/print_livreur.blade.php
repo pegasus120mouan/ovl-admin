@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Point des livraisons - {{ $boutique->nom ?? (($livreur->nom ?? 'Livreur') . ' ' . ($livreur->prenoms ?? '')) }}</title>
+    <title>Point livreur - {{ ($livreur->nom ?? 'Livreur') . ' ' . ($livreur->prenoms ?? '') }}</title>
     <style>
         body {
             font-family: Helvetica, Arial, DejaVu Sans, sans-serif;
@@ -92,14 +92,6 @@
             font-size: 25px;
             color: #fff;
         }
-        .footer {
-            text-align: center;
-            font-size: 9px;
-            color: #0a0a0aff;
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-        }
     </style>
 </head>
 <body>
@@ -124,11 +116,11 @@
     </table>
 
     <div class="title-box">
-        Point des livraisons Effectuées
+        Point livreur (Base: coût global)
     </div>
 
     <div class="info-section">
-        <p><strong>Partenaire:</strong> {{ $boutique->nom ?? (($livreur->nom ?? 'N/A') . ' ' . ($livreur->prenoms ?? '')) }}</p>
+        <p><strong>Livreur:</strong> {{ ($livreur->nom ?? 'N/A') . ' ' . ($livreur->prenoms ?? '') }}</p>
         <p><strong>Date:</strong> {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</p>
     </div>
 
@@ -136,7 +128,7 @@
         <thead>
             <tr style="background-color: #6b6969ff; color: #0c0c0cff;">
                 <th>Communes</th>
-                <th>Montant</th>
+                <th>Coût global</th>
                 <th>Date de réception</th>
                 <th>Date de livraison</th>
                 <th>Statut</th>
@@ -146,7 +138,7 @@
             @foreach($commandes as $commande)
             <tr>
                 <td>{{ $commande->communes }}</td>
-                <td>{{ number_format($commande->cout_reel, 0, ',', ' ') }}</td>
+                <td>{{ number_format($commande->cout_global, 0, ',', ' ') }}</td>
                 <td>{{ $commande->date_reception ? \Carbon\Carbon::parse($commande->date_reception)->format('d-m-Y') : 'N/A' }}</td>
                 <td>{{ $commande->date_livraison ? \Carbon\Carbon::parse($commande->date_livraison)->format('d-m-Y') : 'N/A' }}</td>
                 <td class="{{ $commande->statut == 'Livré' ? 'status-livre' : ($commande->statut == 'Non Livré' ? 'status-non-livre' : 'status-retour') }}">

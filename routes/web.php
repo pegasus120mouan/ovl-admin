@@ -32,6 +32,7 @@ Route::get('bilans/hier', [BilanController::class, 'hier'])->name('bilans.hier')
 
 // Points Livreurs
 Route::get('points-livreurs', [PointsLivreurController::class, 'index'])->name('points-livreurs.index');
+Route::get('points-livreurs/print-depot', [PointsLivreurController::class, 'printDepot'])->name('points-livreurs.print-depot');
 Route::post('points-livreurs', [PointsLivreurController::class, 'store'])->name('points-livreurs.store');
 Route::put('points-livreurs/{pointsLivreur}', [PointsLivreurController::class, 'update'])->name('points-livreurs.update');
 Route::delete('points-livreurs/{pointsLivreur}', [PointsLivreurController::class, 'destroy'])->name('points-livreurs.destroy');
@@ -62,7 +63,14 @@ Route::post('users/livreurs', [UtilisateurController::class, 'storeLivreurWeb'])
 
 Route::get('users/administrateurs/{admin}', [UtilisateurController::class, 'showAdministrateurWeb'])->name('users.administrateurs.show');
 
+Route::get('users/livreurs/{livreur}', [UtilisateurController::class, 'showLivreurWeb'])->name('users.livreurs.show');
+
+Route::get('users/livreurs/{livreur}/commandes', [UtilisateurController::class, 'commandesLivreurWeb'])->name('users.livreurs.commandes');
+
 Route::put('users/administrateurs/{admin}', [UtilisateurController::class, 'updateAdministrateurWeb'])->name('users.administrateurs.update');
+Route::put('users/livreurs/{livreur}', [UtilisateurController::class, 'updateLivreurWeb'])->name('users.livreurs.update');
 Route::delete('users/administrateurs/{admin}', [UtilisateurController::class, 'destroyAdministrateurWeb'])->name('users.administrateurs.destroy');
+Route::delete('users/livreurs/{livreur}', [UtilisateurController::class, 'destroyLivreurWeb'])->name('users.livreurs.destroy');
 
 Route::patch('users/administrateurs/{admin}/toggle-statut', [UtilisateurController::class, 'toggleAdministrateurStatutWeb'])->name('users.administrateurs.toggle-statut');
+Route::patch('users/livreurs/{livreur}/toggle-statut', [UtilisateurController::class, 'toggleLivreurStatutWeb'])->name('users.livreurs.toggle-statut');
