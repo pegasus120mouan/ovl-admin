@@ -116,7 +116,7 @@
     </table>
 
     <div class="title-box">
-        Point livreur (Base: coût global)
+        Point des colis reçus   
     </div>
 
     <div class="info-section">
