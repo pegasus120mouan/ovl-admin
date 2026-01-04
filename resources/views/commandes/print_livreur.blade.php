@@ -127,16 +127,19 @@
     <table class="data-table">
         <thead>
             <tr style="background-color: #6b6969ff; color: #0c0c0cff;">
+                
                 <th>Communes</th>
                 <th>Coût global</th>
                 <th>Date de réception</th>
                 <th>Date de livraison</th>
                 <th>Statut</th>
+                <th>Boutique</th>
             </tr>
         </thead>
         <tbody>
             @foreach($commandes as $commande)
             <tr>
+                
                 <td>{{ $commande->communes }}</td>
                 <td>{{ number_format($commande->cout_global, 0, ',', ' ') }}</td>
                 <td>{{ $commande->date_reception ? \Carbon\Carbon::parse($commande->date_reception)->format('d-m-Y') : 'N/A' }}</td>
@@ -144,11 +147,14 @@
                 <td class="{{ $commande->statut == 'Livré' ? 'status-livre' : ($commande->statut == 'Non Livré' ? 'status-non-livre' : 'status-retour') }}">
                     {{ $commande->statut }}
                 </td>
+                <td>
+                    {{ $commande->client?->boutique?->nom ?? trim(($commande->client?->nom ?? '') . ' ' . ($commande->client?->prenoms ?? '')) ?: 'N/A' }}
+                </td>
             </tr>
             @endforeach
             <tr class="total-row">
-                <td colspan="3" style="text-align: right;">Total</td>
-                <td colspan="2">{{ number_format($total, 0, ',', ' ') }}</td>
+                <td colspan="4" style="text-align: right;"><strong>Total</strong></td>
+                <td colspan="2"><strong>{{ number_format($total, 0, ',', ' ') }}</strong></td>
             </tr>
         </tbody>
     </table>
