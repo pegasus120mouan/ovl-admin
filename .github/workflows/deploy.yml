@@ -19,6 +19,8 @@ jobs:
             set -e
             cd "${{ secrets.APP_DIR }}"
 
+            git config --global --add safe.directory "${{ secrets.APP_DIR }}"
+
             git fetch --all
             git reset --hard origin/main
 

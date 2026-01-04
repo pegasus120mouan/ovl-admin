@@ -411,7 +411,7 @@
               <li class="nav-item">
                 <a href="{{route('users.administrateurs')}}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Liste des administrateurs</p>
+                  <p>Liste des administrateur</p>
                 </a>
               </li>
               <li class="nav-item">
