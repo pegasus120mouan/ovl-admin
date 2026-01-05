@@ -74,3 +74,6 @@ Route::delete('users/livreurs/{livreur}', [UtilisateurController::class, 'destro
 
 Route::patch('users/administrateurs/{admin}/toggle-statut', [UtilisateurController::class, 'toggleAdministrateurStatutWeb'])->name('users.administrateurs.toggle-statut');
 Route::patch('users/livreurs/{livreur}/toggle-statut', [UtilisateurController::class, 'toggleLivreurStatutWeb'])->name('users.livreurs.toggle-statut');
+
+Route::get('users/gestion-statuts', [UtilisateurController::class, 'gestionStatutsWeb'])->name('users.gestion-statuts');
+Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class, 'toggleStatutWeb'])->name('users.toggle-statut');

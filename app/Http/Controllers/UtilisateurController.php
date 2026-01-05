@@ -117,6 +117,62 @@ class UtilisateurController extends Controller
         return response()->json($utilisateur);
     }
 
+    public function gestionStatutsWeb(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+
+        $administrateursTotal = Utilisateur::query()->where('role', 'admin')->count();
+        $administrateursActifs = Utilisateur::query()->where('role', 'admin')->where('statut_compte', 1)->count();
+        $administrateursInactifs = Utilisateur::query()->where('role', 'admin')->where('statut_compte', 0)->count();
+        $boutiquesTotal = Boutique::count();
+
+        $query = Utilisateur::query();
+
+        $keyword = (string) $request->get('q', '');
+        $role = (string) $request->get('role', '');
+        $statut = $request->get('statut');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('nom', 'like', '%' . $keyword . '%')
+                    ->orWhere('prenoms', 'like', '%' . $keyword . '%')
+                    ->orWhere('contact', 'like', '%' . $keyword . '%')
+                    ->orWhere('login', 'like', '%' . $keyword . '%');
+            });
+        }
+
+        if ($role !== '') {
+            $query->where('role', $role);
+        }
+
+        if ($statut !== null && $statut !== '') {
+            $query->where('statut_compte', (int) $statut);
+        }
+
+        $utilisateurs = $query
+            ->orderBy('role')
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('users.gestion_statuts', compact(
+            'utilisateurs',
+            'administrateursTotal',
+            'administrateursActifs',
+            'administrateursInactifs',
+            'boutiquesTotal'
+        ));
+    }
+
+    public function toggleStatutWeb(Utilisateur $utilisateur)
+    {
+        $utilisateur->statut_compte = !$utilisateur->statut_compte;
+        $utilisateur->save();
+
+        return redirect()->back();
+    }
+
     public function verifyPin(Request $request)
     {
         $validated = $request->validate([

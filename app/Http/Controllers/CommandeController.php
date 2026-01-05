@@ -293,7 +293,6 @@ class CommandeController extends Controller
                 ->get();
 
             // Total uniquement pour les commandes livrées
-            $total = $commandes->where('statut', 'Livré')->sum('cout_global');
         } else {
             $commandes = $commandesQuery
                 ->whereDate('date_livraison', $date)

@@ -287,7 +287,7 @@
               <p>
                 Commandes
                 <i class="fas fa-angle-left right"></i>
-                <span class="badge badge-info right">6</span>
+                <span class="badge badge-info right">{{ $commandesRecuesAujourdHui ?? 0 }}</span>
               </p>
             </a>
             <ul class="nav nav-treeview">
@@ -410,20 +410,20 @@
             <ul class="nav nav-treeview">
               <li class="nav-item">
                 <a href="{{route('users.administrateurs')}}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
+                  <i class="fas fa-user-shield nav-icon"></i>
                   <p>Liste des administrateurs</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{route('users.livreurs')}}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
+                  <i class="fas fa-motorcycle nav-icon"></i>
                   <p>Liste des livreurs</p>
                 </a>
               </li>
               <li class="nav-item">
-                <a href="pages/forms/editors.html" class="nav-link">
+                <a href="{{route('users.gestion-statuts')}}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Editors</p>
+                  <p>Gestion des statuts</p>
                 </a>
               </li>
               <li class="nav-item">

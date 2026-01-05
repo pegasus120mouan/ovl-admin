@@ -129,7 +129,7 @@
             <tr style="background-color: #6b6969ff; color: #0c0c0cff;">
                 
                 <th>Communes</th>
-                <th>Coût global</th>
+                <th>Coût livraison</th>
                 <th>Date de réception</th>
                 <th>Date de livraison</th>
                 <th>Statut</th>
@@ -141,7 +141,7 @@
             <tr>
                 
                 <td>{{ $commande->communes }}</td>
-                <td>{{ number_format($commande->cout_global, 0, ',', ' ') }}</td>
+                <td>{{ number_format($commande->cout_livraison, 0, ',', ' ') }}</td>
                 <td>{{ $commande->date_reception ? \Carbon\Carbon::parse($commande->date_reception)->format('d-m-Y') : 'N/A' }}</td>
                 <td>{{ $commande->date_livraison ? \Carbon\Carbon::parse($commande->date_livraison)->format('d-m-Y') : 'N/A' }}</td>
                 <td class="{{ $commande->statut == 'Livré' ? 'status-livre' : ($commande->statut == 'Non Livré' ? 'status-non-livre' : 'status-retour') }}">
