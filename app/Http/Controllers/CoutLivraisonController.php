@@ -7,6 +7,52 @@ use Illuminate\Http\Request;
 
 class CoutLivraisonController extends Controller
 {
+    public function indexWeb(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+
+        $couts = CoutLivraison::query()
+            ->orderBy('cout_livraison')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $totalCouts = CoutLivraison::count();
+        $coutMin = CoutLivraison::min('cout_livraison');
+        $coutMax = CoutLivraison::max('cout_livraison');
+        $coutMoyen = CoutLivraison::avg('cout_livraison');
+
+        return view('cout_livraisons.index', compact('couts', 'totalCouts', 'coutMin', 'coutMax', 'coutMoyen'));
+    }
+
+    public function storeWeb(Request $request)
+    {
+        $validated = $request->validate([
+            'cout_livraison' => 'required|integer|min:0',
+        ]);
+
+        CoutLivraison::create($validated);
+
+        return redirect()->route('cout-livraisons.index')->with('success', 'Coût de livraison ajouté avec succès');
+    }
+
+    public function updateWeb(Request $request, CoutLivraison $coutLivraison)
+    {
+        $validated = $request->validate([
+            'cout_livraison' => 'required|integer|min:0',
+        ]);
+
+        $coutLivraison->update($validated);
+
+        return redirect()->route('cout-livraisons.index')->with('success', 'Coût de livraison modifié avec succès');
+    }
+
+    public function destroyWeb(CoutLivraison $coutLivraison)
+    {
+        $coutLivraison->delete();
+
+        return redirect()->route('cout-livraisons.index')->with('success', 'Coût de livraison supprimé avec succès');
+    }
+
     public function index()
     {
         $couts = CoutLivraison::all();
@@ -16,8 +62,7 @@ class CoutLivraisonController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'zone' => 'required|string|max:255',
-            'cout' => 'required|integer',
+            'cout_livraison' => 'required|integer|min:0',
         ]);
 
         $cout = CoutLivraison::create($validated);
@@ -32,8 +77,7 @@ class CoutLivraisonController extends Controller
     public function update(Request $request, CoutLivraison $coutLivraison)
     {
         $validated = $request->validate([
-            'zone' => 'sometimes|required|string|max:255',
-            'cout' => 'sometimes|required|integer',
+            'cout_livraison' => 'sometimes|required|integer|min:0',
         ]);
 
         $coutLivraison->update($validated);
@@ -48,7 +92,6 @@ class CoutLivraisonController extends Controller
 
     public function getByZone($zone)
     {
-        $cout = CoutLivraison::where('zone', $zone)->first();
-        return response()->json($cout);
+        return response()->json(null, 404);
     }
 }

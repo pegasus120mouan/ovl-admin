@@ -16,8 +16,18 @@ class Prix extends Model
     protected $fillable = [
         'commune_id',
         'zone_id',
-        'prix',
+        'montant',
     ];
+
+    public function getPrixAttribute()
+    {
+        return $this->attributes['montant'] ?? null;
+    }
+
+    public function setPrixAttribute($value)
+    {
+        $this->attributes['montant'] = $value;
+    }
 
     public function commune(): BelongsTo
     {

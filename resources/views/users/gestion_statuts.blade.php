@@ -131,7 +131,19 @@
             <tbody>
               @forelse($utilisateurs as $utilisateur)
                 <tr>
-                  <td>{{ $utilisateur->role }}</td>
+                  <td>
+                    @php
+                      $role = $utilisateur->role;
+                      $roleIcon = $role === 'admin'
+                        ? 'admin.png'
+                        : ($role === 'clients'
+                          ? 'clients.png'
+                          : ($role === 'livreur' ? 'livreur.png' : null));
+                    @endphp
+                    @if($roleIcon)
+                      <img src="{{ asset('img/icones/' . $roleIcon) }}" alt="{{ $role }}" title="{{ $role }}" style="width: 40px; height: 40px; object-fit: contain;">
+                    @endif
+                  </td>
                   <td>{{ $utilisateur->nom }}</td>
                   <td>{{ $utilisateur->prenoms }}</td>
                   <td>{{ $utilisateur->contact }}</td>
@@ -155,7 +167,49 @@
           </table>
         </div>
         <div class="card-footer">
-          {{ $utilisateurs->links() }}
+          <div class="d-flex justify-content-between align-items-center" style="background: #6c757d; color: #fff; padding: 8px 12px; border-radius: 3px;">
+            <div>
+              Affichage de {{ $utilisateurs->firstItem() ?? 0 }} à {{ $utilisateurs->lastItem() ?? 0 }} sur {{ $utilisateurs->total() }} entrées
+            </div>
+
+            <div class="d-flex align-items-center">
+              <a
+                href="{{ $utilisateurs->previousPageUrl() ?? '#' }}"
+                class="btn btn-primary btn-sm mr-2 {{ $utilisateurs->onFirstPage() ? 'disabled' : '' }}"
+                @if($utilisateurs->onFirstPage()) aria-disabled="true" tabindex="-1" @endif
+              >
+                <i class="fas fa-chevron-left"></i>
+              </a>
+
+              <span class="mr-2">
+                {{ $utilisateurs->currentPage() }}/{{ $utilisateurs->lastPage() }}
+              </span>
+
+              <a
+                href="{{ $utilisateurs->nextPageUrl() ?? '#' }}"
+                class="btn btn-primary btn-sm mr-3 {{ $utilisateurs->hasMorePages() ? '' : 'disabled' }}"
+                @if(!$utilisateurs->hasMorePages()) aria-disabled="true" tabindex="-1" @endif
+              >
+                <i class="fas fa-chevron-right"></i>
+              </a>
+
+              <form method="GET" action="{{ route('users.gestion-statuts') }}" class="form-inline mb-0">
+                <input type="hidden" name="q" value="{{ request('q') }}">
+                <input type="hidden" name="role" value="{{ request('role') }}">
+                <input type="hidden" name="statut" value="{{ request('statut') }}">
+                <input type="hidden" name="page" value="1">
+
+                <label class="mr-2 mb-0">Afficher :</label>
+                <select name="per_page" class="form-control form-control-sm mr-2" style="width: 80px;">
+                  @foreach([10, 20, 50, 100] as $size)
+                    <option value="{{ $size }}" {{ (int) request('per_page', 20) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                  @endforeach
+                </select>
+
+                <button type="submit" class="btn btn-primary btn-sm">Valider</button>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
     </div>

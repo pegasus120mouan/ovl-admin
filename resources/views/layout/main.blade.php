@@ -422,14 +422,8 @@
               </li>
               <li class="nav-item">
                 <a href="{{route('users.gestion-statuts')}}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
+                  <i class="fas fa-lock nav-icon"></i>
                   <p>Gestion des statuts</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="pages/forms/validation.html" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Validation</p>
                 </a>
               </li>
             </ul>
@@ -438,27 +432,27 @@
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-table"></i>
               <p>
-                Tables
+                Gestion des coûts
                 <i class="fas fa-angle-left right"></i>
               </p>
             </a>
             <ul class="nav nav-treeview">
               <li class="nav-item">
-                <a href="pages/tables/simple.html" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Simple Tables</p>
+                <a href="{{route('cout-livraisons.index')}}" class="nav-link">
+                  <i class="fas fa-coins nav-icon"></i>
+                  <p>Coût des livraisons</p>
                 </a>
               </li>
               <li class="nav-item">
-                <a href="pages/tables/data.html" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>DataTables</p>
+                <a href="{{route('communes.index')}}" class="nav-link">
+                  <i class="fas fa-city nav-icon"></i>
+                  <p>Communes de réception</p>
                 </a>
               </li>
               <li class="nav-item">
-                <a href="pages/tables/jsgrid.html" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>jsGrid</p>
+                <a href="{{route('communes.zones')}}" class="nav-link">
+                  <i class="fas fa-map nav-icon"></i>
+                  <p>Zones</p>
                 </a>
               </li>
             </ul>
