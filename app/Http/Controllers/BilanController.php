@@ -176,7 +176,7 @@ class BilanController extends Controller
             ->where('utilisateur_id', $client->id)
             ->where('statut', 'Livré')
             ->whereDate('date_livraison', $date)
-            ->sum('cout_global');
+            ->sum('cout_reel');
 
         $boutiqueNom = $client->boutique->nom ?? $client->nom;
         $clientNom = trim(($client->nom ?? '') . ' ' . ($client->prenoms ?? ''));
@@ -186,10 +186,12 @@ class BilanController extends Controller
         $message = $boutiqueNom . $nl . $nl
             . "Bonjour {$clientNom}," . $nl . $nl
             . "Voici votre rapport de livraison :" . $nl
+            . "Date: " . \Carbon\Carbon::parse($date)->format('d/m/Y') . $nl
             . "Total colis: {$totalColis}" . $nl
             . "Livres: {$livres}" . $nl
             . "Non livres: {$nonLivres}" . $nl
             . "Montant: " . number_format((float) $montant, 0, ',', ' ') . " CFA" . $nl . $nl
+            . "Un point détaillé vous sera transmis par Whatsapp" . $nl . $nl
             . "Merci de votre confiance." . $nl
             . "OVL Delivery";
 
