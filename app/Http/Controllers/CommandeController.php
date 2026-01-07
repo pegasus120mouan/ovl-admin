@@ -8,12 +8,16 @@ use App\Models\Boutique;
 use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class CommandeController extends Controller
 {
     public function index()
     {
         $perPage = request('per_page', 20);
+
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
         
         $query = Commande::with(['client.boutique', 'livreur']);
         
@@ -23,6 +27,9 @@ class CommandeController extends Controller
         }
         if (request('statut')) {
             $query->where('statut', request('statut'));
+        }
+        if (request('statut') === 'Livré' && !request()->filled('date_livraison')) {
+            $query->whereNotNull('date_livraison')->whereDate('date_livraison', Carbon::now()->toDateString());
         }
         if (request('livreur_id')) {
             $query->where('livreur_id', request('livreur_id'));
@@ -43,19 +50,33 @@ class CommandeController extends Controller
         }
         
         $commandes = $query->orderBy('date_reception', 'desc')->paginate($perPage)->withQueryString();
+
+        $statsMois = [
+            'recus' => Commande::whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
+            'livrees' => Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])->count(),
+            'non_livrees' => Commande::where('statut', 'Non Livré')->whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
+            'retours' => Commande::where('statut', 'Retour')->whereBetween('date_retour', [$startOfMonth, $endOfMonth])->count(),
+        ];
+
         $coutsLivraison = CoutLivraison::all();
         $boutiques = Boutique::all();
         $livreurs = Utilisateur::livreurs()->get();
-        return view('commandes.index', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs'));
+        return view('commandes.index', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs', 'statsMois'));
     }
 
     public function livrees()
     {
         $perPage = request('per_page', 20);
+
+        $dateLivraison = request('date_livraison', Carbon::now()->toDateString());
+
         $commandes = Commande::with(['client.boutique', 'livreur'])
             ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', $dateLivraison)
             ->orderBy('date_livraison', 'desc')
-            ->paginate($perPage);
+            ->paginate($perPage)
+            ->withQueryString();
         $coutsLivraison = CoutLivraison::all();
         $boutiques = Boutique::all();
         $livreurs = Utilisateur::livreurs()->get();

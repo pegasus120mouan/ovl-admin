@@ -98,6 +98,7 @@
                   <th>Nbre de colis Récu</th>
                   <th>Nbre de livré</th>
                   <th>Nbre de colis non Livré</th>
+                  <th>Envoyer Message</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +111,21 @@
                   <td><span class="text-info">{{ $point['nbre_recu'] }}</span></td>
                   <td><span class="text-success">{{ $point['nbre_livre'] }}</span></td>
                   <td><span class="text-danger">{{ $point['nbre_non_livre'] }}</span></td>
+                  <td>
+                    @if(($point['client']->contact ?? null))
+                      <form action="{{ route('bilans.send-client-sms', $point['client']) }}" method="POST" class="d-inline">
+                        @csrf
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <button type="submit" class="btn btn-success btn-sm" title="Envoyer SMS">
+                          <i class="fas fa-sms"></i> SMS
+                        </button>
+                      </form>
+                    @else
+                      <button type="button" class="btn btn-secondary btn-sm" disabled title="Aucun contact">
+                        <i class="fas fa-sms"></i> SMS
+                      </button>
+                    @endif
+                  </td>
                 </tr>
                 @endforeach
               </tbody>

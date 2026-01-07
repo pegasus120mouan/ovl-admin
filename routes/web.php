@@ -8,6 +8,7 @@ use App\Http\Controllers\PointsLivreurController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\BoutiqueController;
 use App\Http\Controllers\CoutLivraisonController;
+use App\Http\Controllers\PointsClientController;
 use App\Http\Controllers\UtilisateurController;
 use App\Http\Controllers\CommuneController;
 use App\Http\Controllers\ZoneController;
@@ -33,6 +34,7 @@ Route::patch('commandes/{commande}/marquer-retour', [CommandeController::class, 
 // Bilans
 Route::get('bilans', [BilanController::class, 'index'])->name('bilans.index');
 Route::get('bilans/hier', [BilanController::class, 'hier'])->name('bilans.hier');
+Route::post('bilans/{client}/envoyer-sms', [BilanController::class, 'sendClientReportSms'])->name('bilans.send-client-sms');
 
 // Points Livreurs
 Route::get('points-livreurs', [PointsLivreurController::class, 'index'])->name('points-livreurs.index');
@@ -41,6 +43,10 @@ Route::post('points-livreurs', [PointsLivreurController::class, 'store'])->name(
 Route::put('points-livreurs/{pointsLivreur}', [PointsLivreurController::class, 'update'])->name('points-livreurs.update');
 Route::delete('points-livreurs/{pointsLivreur}', [PointsLivreurController::class, 'destroy'])->name('points-livreurs.destroy');
 Route::post('points-livreurs/sync-recettes', [PointsLivreurController::class, 'syncRecettes'])->name('points-livreurs.sync-recettes');
+
+// Points Clients
+Route::get('points-clients', [PointsClientController::class, 'index'])->name('points-clients.index');
+Route::get('points-clients/print', [PointsClientController::class, 'print'])->name('points-clients.print');
 
 Route::get('cout-livraisons', [CoutLivraisonController::class, 'indexWeb'])->name('cout-livraisons.index');
 Route::post('cout-livraisons', [CoutLivraisonController::class, 'storeWeb'])->name('cout-livraisons.store');

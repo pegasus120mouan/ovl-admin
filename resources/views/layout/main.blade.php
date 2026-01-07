@@ -321,7 +321,7 @@
             </a>
             <ul class="nav nav-treeview">
               <li class="nav-item">
-                <a href="pages/charts/chartjs.html" class="nav-link">
+                <a href="{{ route('points-clients.index') }}" class="nav-link">
                   <i class="fas fa-user-check nav-icon"></i>
                   <p>Point des clients</p>
                 </a>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
+use App\Services\SmsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -134,6 +135,81 @@ class BilanController extends Controller
             'versements',
             'pointLivreurs'
         ));
+    }
+
+    public function sendClientReportSms(Request $request, Utilisateur $client)
+    {
+        if (($client->role ?? null) !== 'clients') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        if (!($client->contact ?? null)) {
+            return redirect()
+                ->back()
+                ->with('error', "Aucun contact pour ce client");
+        }
+
+        $date = $validated['date'];
+
+        $totalColis = Commande::query()
+            ->where('utilisateur_id', $client->id)
+            ->whereDate('date_reception', $date)
+            ->count();
+
+        $livres = Commande::query()
+            ->where('utilisateur_id', $client->id)
+            ->where('statut', 'Livré')
+            ->whereDate('date_livraison', $date)
+            ->count();
+
+        $nonLivres = Commande::query()
+            ->where('utilisateur_id', $client->id)
+            ->where('statut', 'Non Livré')
+            ->whereDate('date_reception', $date)
+            ->count();
+
+        $montant = Commande::query()
+            ->where('utilisateur_id', $client->id)
+            ->where('statut', 'Livré')
+            ->whereDate('date_livraison', $date)
+            ->sum('cout_global');
+
+        $boutiqueNom = $client->boutique->nom ?? $client->nom;
+        $clientNom = trim(($client->nom ?? '') . ' ' . ($client->prenoms ?? ''));
+
+        $nl = "\r\n";
+
+        $message = $boutiqueNom . $nl . $nl
+            . "Bonjour {$clientNom}," . $nl . $nl
+            . "Voici votre rapport de livraison :" . $nl
+            . "Total colis: {$totalColis}" . $nl
+            . "Livres: {$livres}" . $nl
+            . "Non livres: {$nonLivres}" . $nl
+            . "Montant: " . number_format((float) $montant, 0, ',', ' ') . " CFA" . $nl . $nl
+            . "Merci de votre confiance." . $nl
+            . "OVL Delivery";
+
+        try {
+            SmsService::sendMessage($client->contact, $message);
+        } catch (\Throwable $e) {
+            \Log::error('Bilan client SMS failed', [
+                'client_id' => $client->id,
+                'contact' => $client->contact,
+                'date' => $date,
+                'message' => $e->getMessage(),
+            ]);
+            return redirect()
+                ->back()
+                ->with('error', "Echec d'envoi du SMS: " . $e->getMessage());
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', 'SMS envoy\xC3\xA9 avec succ\xC3\xA8s');
     }
     
     public function hier()
