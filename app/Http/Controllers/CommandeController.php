@@ -289,6 +289,7 @@ class CommandeController extends Controller
 
         $boutique = null;
         $livreur = null;
+        $total = 0;
 
         $commandesQuery = Commande::query()->with(['client.boutique', 'livreur']);
 
@@ -314,6 +315,7 @@ class CommandeController extends Controller
                 ->get();
 
             // Total uniquement pour les commandes livrées
+            $total = $commandes->where('statut', 'Livré')->sum('cout_global');
         } else {
             $commandes = $commandesQuery
                 ->whereDate('date_livraison', $date)
