@@ -100,7 +100,7 @@ class AuthController extends Controller
             ->whereDate('commandes.date_reception', '>=', $startOfYear)
             ->whereDate('commandes.date_reception', '<=', $today)
             ->selectRaw("COALESCE(b.nom, 'Sans boutique') as label, COUNT(*) as total")
-            ->groupBy(DB::raw("COALESCE(b.nom, 'Sans boutique')"))
+            ->groupBy('b.id', 'b.nom')
             ->orderByDesc('total')
             ->limit(8)
             ->get();
