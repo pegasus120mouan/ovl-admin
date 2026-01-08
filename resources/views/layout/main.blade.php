@@ -53,6 +53,9 @@
       <li class="nav-item d-none d-sm-inline-block">
         <a href="{{ route('bilans.index') }}" class="nav-link">Bilans</a>
       </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <a href="{{ route('dashboard') }}" class="nav-link">Analytics</a>
+      </li>
     </ul>
 
     <!-- Right navbar links -->
