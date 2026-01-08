@@ -318,11 +318,18 @@ class CommandeController extends Controller
             $total = $commandes->where('statut', 'Livré')->sum('cout_global');
         } else {
             $commandes = $commandesQuery
-                ->whereDate('date_livraison', $date)
-                ->where('statut', 'Livré')
+                ->where(function($q) use ($date) {
+                    $q->whereDate('date_livraison', $date)
+                      ->where('statut', 'Livré')
+                      ->orWhere(function($q2) use ($date) {
+                          $q2->whereDate('date_reception', $date)
+                             ->where('statut', 'Non Livré');
+                      });
+                })
                 ->get();
 
-            $total = $commandes->sum('cout_reel');
+            // Total uniquement pour les commandes livrées
+            $total = $commandes->where('statut', 'Livré')->sum('cout_reel');
         }
         
         // Générer le PDF

@@ -144,11 +144,21 @@
         </thead>
         <tbody>
             @foreach($commandes as $commande)
-            <tr>
+            <tr style="{{ $commande->statut == 'Non Livré' ? 'color: #dc3545; font-weight: bold;' : '' }}">
                 <td>{{ $commande->communes }}</td>
                 <td>{{ number_format($commande->cout_reel, 0, ',', ' ') }}</td>
                 <td>{{ $commande->date_reception ? \Carbon\Carbon::parse($commande->date_reception)->format('d-m-Y') : 'N/A' }}</td>
-                <td>{{ $commande->date_livraison ? \Carbon\Carbon::parse($commande->date_livraison)->format('d-m-Y') : 'N/A' }}</td>
+                <td>
+                    @if($commande->date_livraison)
+                        {{ \Carbon\Carbon::parse($commande->date_livraison)->format('d-m-Y') }}
+                    @else
+                        @if($commande->statut == 'Non Livré')
+                            <span class="status-non-livre">Non Livré</span>
+                        @else
+                            N/A
+                        @endif
+                    @endif
+                </td>
                 <td class="{{ $commande->statut == 'Livré' ? 'status-livre' : ($commande->statut == 'Non Livré' ? 'status-non-livre' : 'status-retour') }}">
                     {{ $commande->statut }}
                 </td>
