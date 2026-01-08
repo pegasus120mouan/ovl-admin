@@ -15,6 +15,10 @@ class Contrat extends Model
 
     protected $fillable = [
         'id_engin',
+        'vignette_date_debut',
+        'vignette_date_fin',
+        'assurance_date_debut',
+        'assurance_date_fin',
         'date_debut',
         'date_fin',
         'montant',
@@ -22,6 +26,10 @@ class Contrat extends Model
     ];
 
     protected $casts = [
+        'vignette_date_debut' => 'date',
+        'vignette_date_fin' => 'date',
+        'assurance_date_debut' => 'date',
+        'assurance_date_fin' => 'date',
         'date_debut' => 'date',
         'date_fin' => 'date',
         'montant' => 'decimal:2',

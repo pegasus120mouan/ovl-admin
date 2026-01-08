@@ -13,6 +13,9 @@ use App\Http\Controllers\UtilisateurController;
 use App\Http\Controllers\CommuneController;
 use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\PrixController;
+use App\Http\Controllers\EnginController;
+use App\Http\Controllers\TypeEnginController;
+use App\Http\Controllers\ContratController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -47,6 +50,20 @@ Route::post('points-livreurs/sync-recettes', [PointsLivreurController::class, 's
 // Points Clients
 Route::get('points-clients', [PointsClientController::class, 'index'])->name('points-clients.index');
 Route::get('points-clients/print', [PointsClientController::class, 'print'])->name('points-clients.print');
+
+// Engins
+Route::get('engins', [EnginController::class, 'indexWeb'])->name('engins.index');
+Route::get('engins/{engin}', [EnginController::class, 'showWeb'])->whereNumber('engin')->name('engins.show');
+Route::post('engins', [EnginController::class, 'storeWeb'])->name('engins.store');
+Route::put('engins/{engin}', [EnginController::class, 'updateWeb'])->whereNumber('engin')->name('engins.update');
+Route::put('engins/{engin}/images', [EnginController::class, 'updateImagesWeb'])->whereNumber('engin')->name('engins.images.update');
+Route::delete('engins/{engin}', [EnginController::class, 'destroyWeb'])->whereNumber('engin')->name('engins.destroy');
+Route::get('engins/contrats', [ContratController::class, 'indexWeb'])->name('engins.contrats_engins');
+Route::post('engins/contrats', [ContratController::class, 'storeWeb'])->name('engins.contrats_engins.store');
+Route::get('engins/type-engins', [TypeEnginController::class, 'indexWeb'])->name('engins.type_engins');
+Route::post('engins/type-engins', [TypeEnginController::class, 'storeWeb'])->name('engins.type_engins.store');
+Route::put('engins/type-engins/{typeEngin}', [TypeEnginController::class, 'updateWeb'])->name('engins.type_engins.update');
+Route::delete('engins/type-engins/{typeEngin}', [TypeEnginController::class, 'destroyWeb'])->name('engins.type_engins.destroy');
 
 Route::get('cout-livraisons', [CoutLivraisonController::class, 'indexWeb'])->name('cout-livraisons.index');
 Route::post('cout-livraisons', [CoutLivraisonController::class, 'storeWeb'])->name('cout-livraisons.store');

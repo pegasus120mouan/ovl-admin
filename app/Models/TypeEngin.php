@@ -9,6 +9,10 @@ class TypeEngin extends Model
 {
     protected $table = 'type_engins';
 
+    public $incrementing = true;
+
+    protected $keyType = 'int';
+
     public $timestamps = false;
 
     protected $fillable = [

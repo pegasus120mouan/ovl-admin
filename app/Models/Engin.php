@@ -16,15 +16,26 @@ class Engin extends Model
 
     protected $fillable = [
         'utilisateur_id',
-        'marque',
-        'modele',
-        'immatriculation',
         'type_engin',
-        'photo',
+        'annee_fabrication',
+        'plaque_immatriculation',
+        'numero_chassis',
+        'couleur',
+        'date_ajout',
+        'marque',
+        'statut',
+        'image_1',
+        'image_2',
+        'image_3',
+        'image_4',
     ];
 
     protected $attributes = [
-        'photo' => 'default.jpg',
+        'statut' => 'Pas attribuée',
+        'image_1' => 'defaut-moto.png',
+        'image_2' => 'defaut-moto.png',
+        'image_3' => 'defaut-moto.png',
+        'image_4' => 'defaut-moto.png',
     ];
 
     public function utilisateur(): BelongsTo

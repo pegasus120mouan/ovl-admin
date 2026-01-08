@@ -460,29 +460,29 @@
               </li>
             </ul>
           </li>
-          <li class="nav-header">EXAMPLES</li>
+          <li class="nav-header">GESTION DES ENGINS</li>
           <li class="nav-item">
-            <a href="pages/calendar.html" class="nav-link">
+            <a href="{{route('engins.index')}}" class="nav-link">
               <i class="nav-icon far fa-calendar-alt"></i>
               <p>
-                Calendar
+                Listes des engins
                 <span class="badge badge-info right">2</span>
               </p>
             </a>
           </li>
           <li class="nav-item">
-            <a href="pages/gallery.html" class="nav-link">
+            <a href="{{ route('engins.type_engins') }}" class="nav-link">
               <i class="nav-icon far fa-image"></i>
               <p>
-                Gallery
+                Types d'engins
               </p>
             </a>
           </li>
           <li class="nav-item">
-            <a href="pages/kanban.html" class="nav-link">
-              <i class="nav-icon fas fa-columns"></i>
+            <a href="{{ route('engins.contrats_engins') }}" class="nav-link">
+              <i class="nav-icon fas fa-file-contract"></i>
               <p>
-                Kanban Board
+                Contrats
               </p>
             </a>
           </li>
