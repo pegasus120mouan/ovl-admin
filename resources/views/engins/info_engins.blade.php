@@ -24,7 +24,21 @@
     }
 
     if (str_starts_with($filename, 'http://') || str_starts_with($filename, 'https://')) {
-      $imageUrls[$field] = $filename;
+      $publicMinioBase = 'https://file.objetombrepegasus.online';
+      $internalMinioBases = [
+        'http://51.178.49.141:9000',
+        'https://51.178.49.141:9000',
+      ];
+
+      $fixedUrl = $filename;
+      foreach ($internalMinioBases as $internalBase) {
+        if (str_starts_with($fixedUrl, $internalBase)) {
+          $fixedUrl = $publicMinioBase . substr($fixedUrl, strlen($internalBase));
+          break;
+        }
+      }
+
+      $imageUrls[$field] = $fixedUrl;
       continue;
     }
 

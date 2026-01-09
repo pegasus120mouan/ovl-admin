@@ -88,8 +88,6 @@
                 <th>Date livraison</th>
                 <th>Date Retour</th>
                 <th>Actions</th>
-                <th>Changer le livreur</th>
-                <th>Changer Statut livraison</th>
               </tr>
             </thead>
 
@@ -123,9 +121,15 @@
                   </td>
                   <td>{{ $commande->date_retour ? $commande->date_retour->format('d-m-Y') : 'N/A' }}</td>
                   <td>
-                    <div class="d-flex align-items-center" style="gap: 6px;">
+                    <div class="d-inline-flex align-items-center" style="gap: 6px;">
                       <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#modalModifierCommande{{ $commande->id }}" title="Modifier">
                         <i class="fas fa-edit"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalChangerDateLivraison{{ $commande->id }}" title="Changer date livraison">
+                        <i class="fas fa-calendar-check"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#modalChangerDateRetour{{ $commande->id }}" title="Changer date retour">
+                        <i class="fas fa-calendar-times"></i>
                       </button>
                       <form action="{{ route('commandes.destroy', $commande) }}" method="POST" class="m-0">
                         @csrf
@@ -134,13 +138,9 @@
                         <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr?')"><i class="fas fa-trash"></i></button>
                       </form>
                     </div>
-                  </td>
-                  <td>
                     <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#modalAttribuerLivreur{{ $commande->id }}" title="Changer le livreur">
                       <i class="fas fa-motorcycle"></i>
                     </button>
-                  </td>
-                  <td>
                     <button type="button" class="btn btn-sm btn-info" style="background-color:#6dc6d6; border-color:#6dc6d6;" data-toggle="modal" data-target="#modalChangerStatut{{ $commande->id }}" title="Changer le statut">
                       <i class="fas fa-sync"></i>
                     </button>
@@ -256,26 +256,70 @@
                           <input type="date" name="date_reception" class="form-control" value="{{ $commande->date_reception ? $commande->date_reception->format('Y-m-d') : '' }}" required>
                         </div>
                       </div>
-
-                      <div class="col-md-4">
-                        <div class="form-group">
-                          <label>Date de livraison</label>
-                          <input type="date" name="date_livraison" class="form-control" value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
-                        </div>
-                      </div>
-
-                      <div class="col-md-4">
-                        <div class="form-group">
-                          <label>Date de retour</label>
-                          <input type="date" name="date_retour" class="form-control" value="{{ $commande->date_retour ? $commande->date_retour->format('Y-m-d') : '' }}">
-                        </div>
-                      </div>
                     </div>
                   </div>
 
                   <div class="modal-footer">
                     <button type="submit" class="btn btn-warning"><i class="fas fa-save"></i> Mettre à jour</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Changer Date Livraison -->
+          <div class="modal fade" id="modalChangerDateLivraison{{ $commande->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header bg-primary">
+                  <h5 class="modal-title text-white">Changer date de livraison #{{ $commande->id }}</h5>
+                  <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <form action="{{ route('commandes.update', $commande) }}" method="POST">
+                  @csrf
+                  @method('PUT')
+                  <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label>Date de livraison</label>
+                      <input type="date" class="form-control" name="date_livraison" value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Changer Date Retour -->
+          <div class="modal fade" id="modalChangerDateRetour{{ $commande->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header bg-secondary">
+                  <h5 class="modal-title text-white">Changer date de retour #{{ $commande->id }}</h5>
+                  <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <form action="{{ route('commandes.update', $commande) }}" method="POST">
+                  @csrf
+                  @method('PUT')
+                  <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label>Date de retour</label>
+                      <input type="date" class="form-control" name="date_retour" value="{{ $commande->date_retour ? $commande->date_retour->format('Y-m-d') : '' }}">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
                   </div>
                 </form>
               </div>

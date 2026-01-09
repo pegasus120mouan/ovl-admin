@@ -33,7 +33,7 @@ class EnginController extends Controller
 
         $colisLivresMois = Commande::query()
             ->livre()
-            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         $colisNonLivresMois = Commande::query()
@@ -43,7 +43,7 @@ class EnginController extends Controller
 
         $colisRetoursMois = Commande::query()
             ->retour()
-            ->whereBetween('date_retour', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         $typesEngins = TypeEngin::query()
@@ -142,16 +142,12 @@ class EnginController extends Controller
             $filename = 'engin_' . $engin->engin_id . '_' . $field . '_' . time() . '.' . $extension;
 
             $stored = false;
-            $storedUrl = null;
+            $storedKey = null;
             try {
                 $disk = Storage::disk('s3');
                 $disk->putFileAs('engins', $file, $filename);
                 $stored = true;
-                try {
-                    $storedUrl = $disk->url('engins/' . $filename);
-                } catch (\Throwable $e) {
-                    $storedUrl = null;
-                }
+                $storedKey = 'engins/' . $filename;
             } catch (\Throwable $e) {
                 $stored = false;
             }
@@ -163,7 +159,7 @@ class EnginController extends Controller
                 $file->move($targetDir, $filename);
             }
 
-            $updates[$field] = $stored && $storedUrl ? $storedUrl : $filename;
+            $updates[$field] = $stored && $storedKey ? $storedKey : $filename;
         }
 
         if (!empty($updates)) {

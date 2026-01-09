@@ -29,7 +29,7 @@ class TypeEnginController extends Controller
 
         $colisLivresMois = Commande::query()
             ->livre()
-            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         $colisNonLivresMois = Commande::query()
@@ -39,7 +39,7 @@ class TypeEnginController extends Controller
 
         $colisRetoursMois = Commande::query()
             ->retour()
-            ->whereBetween('date_retour', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         return view('engins.type_engins', compact(

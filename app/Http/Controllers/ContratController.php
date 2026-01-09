@@ -31,7 +31,7 @@ class ContratController extends Controller
 
         $colisLivresMois = Commande::query()
             ->livre()
-            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         $colisNonLivresMois = Commande::query()
@@ -41,7 +41,7 @@ class ContratController extends Controller
 
         $colisRetoursMois = Commande::query()
             ->retour()
-            ->whereBetween('date_retour', [$startOfMonth, $endOfMonth])
+            ->whereBetween('date_reception', [$startOfMonth, $endOfMonth])
             ->count();
 
         $engins = Engin::query()
