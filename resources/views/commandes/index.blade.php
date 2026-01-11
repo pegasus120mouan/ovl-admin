@@ -252,7 +252,7 @@
             </select>
           </div>
           <input type="hidden" name="date_reception" value="{{ date('Y-m-d') }}">
-          <input type="hidden" name="cout_reel" id="cout_reel" value="0">
+          <input type="hidden" id="cout_reel" value="0">
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -261,7 +261,7 @@
       </form>
     </div>
   </div>
-</div>
+ </div>
 
 @foreach($commandes as $commande)
 <!-- Modal Détails Commande -->
@@ -369,11 +369,11 @@
           </div>
           <div class="form-group">
             <label>Coût Global</label>
-            <input type="number" class="form-control" name="cout_global" value="{{ $commande->cout_global }}" required>
+            <input type="number" class="form-control" id="cout_global_edit_{{ $commande->id }}" name="cout_global" value="{{ $commande->cout_global }}" required>
           </div>
           <div class="form-group">
             <label>Coût Livraison</label>
-            <select class="form-control" name="cout_livraison" required>
+            <select class="form-control" id="cout_livraison_edit_{{ $commande->id }}" name="cout_livraison" required>
               @foreach($coutsLivraison as $cout)
                 <option value="{{ $cout->cout_livraison }}" {{ $commande->cout_livraison == $cout->cout_livraison ? 'selected' : '' }}>{{ $cout->cout_livraison }}</option>
               @endforeach
@@ -381,7 +381,7 @@
           </div>
           <div class="form-group">
             <label>Coût Réel</label>
-            <input type="number" class="form-control" name="cout_reel" value="{{ $commande->cout_reel }}" required>
+            <input type="number" class="form-control" id="cout_reel_edit_view_{{ $commande->id }}" value="{{ $commande->cout_reel }}" readonly disabled>
           </div>
           <div class="form-group">
             <label>Date Réception</label>
@@ -688,6 +688,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
   coutGlobal.addEventListener('input', calculerCoutReel);
   coutLivraison.addEventListener('change', calculerCoutReel);
+
+  function calculerCoutReelModifier(id) {
+    var g = document.getElementById('cout_global_edit_' + id);
+    var l = document.getElementById('cout_livraison_edit_' + id);
+    var r = document.getElementById('cout_reel_edit_view_' + id);
+
+    if (!g || !l || !r) return;
+
+    var global = parseInt(g.value || '0', 10);
+    var livraison = parseInt(l.value || '0', 10);
+    r.value = String(global - livraison);
+  }
+
+  if (window.jQuery) {
+    $(document).on('shown.bs.modal', '[id^="modalModifier"]', function () {
+      var id = this && typeof this.id === 'string' ? this.id : '';
+      var m = id.match(/modalModifier(\d+)/);
+      if (m && m[1]) {
+        calculerCoutReelModifier(m[1]);
+      }
+    });
+  }
+
+  document.addEventListener('input', function (e) {
+    if (!e.target || !e.target.id) return;
+    var m1 = e.target.id.match(/^cout_global_edit_(\d+)$/);
+    if (m1 && m1[1]) {
+      calculerCoutReelModifier(m1[1]);
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (!e.target || !e.target.id) return;
+    var m1 = e.target.id.match(/^cout_livraison_edit_(\d+)$/);
+    if (m1 && m1[1]) {
+      calculerCoutReelModifier(m1[1]);
+    }
+  });
 });
 </script>
 

@@ -244,7 +244,6 @@
                         <div class="form-group">
                           <label>Coût Réel (FCFA)</label>
                           <input type="number" id="cout_reel_edit_view_{{ $commande->id }}" class="form-control" value="{{ $commande->cout_reel }}" readonly disabled>
-                          <input type="hidden" name="cout_reel" id="cout_reel_edit_{{ $commande->id }}" value="{{ $commande->cout_reel }}">
                         </div>
                       </div>
                     </div>
@@ -473,7 +472,7 @@
           </div>
           <input type="hidden" name="livreur_id" value="{{ $livreur->id }}">
           <input type="hidden" name="date_reception" value="{{ date('Y-m-d') }}">
-          <input type="hidden" name="cout_reel" id="cout_reel" value="">
+          <input type="hidden" id="cout_reel" value="">
           <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
         </div>
         <div class="modal-footer">
@@ -550,16 +549,14 @@
     function computeCoutReelEdit(id) {
       var coutGlobalEl = document.getElementById('cout_global_edit_' + id);
       var coutLivraisonEl = document.getElementById('cout_livraison_edit_' + id);
-      var coutReelHiddenEl = document.getElementById('cout_reel_edit_' + id);
       var coutReelViewEl = document.getElementById('cout_reel_edit_view_' + id);
 
-      if (!coutGlobalEl || !coutLivraisonEl || !coutReelHiddenEl || !coutReelViewEl) return;
+      if (!coutGlobalEl || !coutLivraisonEl || !coutReelViewEl) return;
 
       var coutGlobal = parseInt(coutGlobalEl.value || '0', 10);
       var coutLivraison = parseInt(coutLivraisonEl.value || '0', 10);
-      var coutReel = Math.max(0, coutGlobal - coutLivraison);
+      var coutReel = coutGlobal - coutLivraison;
 
-      coutReelHiddenEl.value = String(coutReel);
       coutReelViewEl.value = String(coutReel);
     }
 

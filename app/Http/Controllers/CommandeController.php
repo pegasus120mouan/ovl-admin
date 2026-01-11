@@ -121,7 +121,7 @@ class CommandeController extends Controller
         ]);
 
         if (!array_key_exists('cout_reel', $validated) || $validated['cout_reel'] === null || (int) $validated['cout_reel'] === 0) {
-            $validated['cout_reel'] = max(0, (int) $validated['cout_global'] - (int) $validated['cout_livraison']);
+            $validated['cout_reel'] = (int) $validated['cout_global'] - (int) $validated['cout_livraison'];
         }
 
         $commande = Commande::create($validated);
@@ -157,7 +157,7 @@ class CommandeController extends Controller
 
         if (array_key_exists('cout_global', $validated) && array_key_exists('cout_livraison', $validated)) {
             if (!array_key_exists('cout_reel', $validated) || $validated['cout_reel'] === null || (int) $validated['cout_reel'] === 0) {
-                $validated['cout_reel'] = max(0, (int) $validated['cout_global'] - (int) $validated['cout_livraison']);
+                $validated['cout_reel'] = (int) $validated['cout_global'] - (int) $validated['cout_livraison'];
             }
         }
 
