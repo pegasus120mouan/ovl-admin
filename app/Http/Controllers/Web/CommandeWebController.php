@@ -113,6 +113,17 @@ class CommandeWebController extends Controller
         if ($validated['statut'] === 'Retour' && !$commande->date_retour) {
             $validated['date_retour'] = now()->toDateString();
         }
+        if ($validated['statut'] === 'Non Livré') {
+            $validated['date_livraison'] = null;
+            $validated['date_retour'] = null;
+        }
+
+        if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison && $validated['statut'] !== 'Non Livré') {
+            unset($validated['date_livraison']);
+        }
+        if (array_key_exists('date_retour', $validated) && $validated['date_retour'] === null && $commande->date_retour && $validated['statut'] !== 'Non Livré') {
+            unset($validated['date_retour']);
+        }
 
         $commande->update($validated);
 

@@ -167,7 +167,20 @@ class CommandeController extends Controller
                 $validated['date_livraison'] = now()->toDateString();
             } elseif ($validated['statut'] === 'Retour') {
                 $validated['date_retour'] = now()->toDateString();
+                if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison) {
+                    unset($validated['date_livraison']);
+                }
+            } elseif ($validated['statut'] === 'Non Livré') {
+                $validated['date_livraison'] = null;
+                $validated['date_retour'] = null;
             }
+        }
+
+        if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison && (!isset($validated['statut']) || $validated['statut'] !== 'Non Livré')) {
+            unset($validated['date_livraison']);
+        }
+        if (array_key_exists('date_retour', $validated) && $validated['date_retour'] === null && $commande->date_retour && (!isset($validated['statut']) || $validated['statut'] !== 'Non Livré')) {
+            unset($validated['date_retour']);
         }
 
         $commande->update($validated);

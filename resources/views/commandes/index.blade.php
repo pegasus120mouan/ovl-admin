@@ -133,11 +133,11 @@
                       </td>
                       <td>
                         @if($commande->statut == 'Livré')
-                          <span class="badge badge-success">{{ $commande->statut }}</span>
+                          <img src="{{ asset('img/icones/ok.png') }}" alt="Livré" title="Livré" style="height:30px; width:auto;">
                         @elseif($commande->statut == 'Non Livré')
-                          <span class="badge badge-warning">{{ $commande->statut }}</span>
+                          <img src="{{ asset('img/icones/non_ok.png') }}" alt="Non Livré" title="Non Livré" style="height:30px; width:auto;">
                         @elseif($commande->statut == 'Retour')
-                          <span class="badge badge-danger">{{ $commande->statut }}</span>
+                          <img src="{{ asset('img/icones/return.png') }}" alt="Retour" title="Retour" style="height:30px; width:auto;">
                         @else
                           <span class="badge badge-secondary">{{ $commande->statut }}</span>
                         @endif
