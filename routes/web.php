@@ -41,6 +41,7 @@ Route::post('bilans/{client}/envoyer-sms', [BilanController::class, 'sendClientR
 
 // Points Livreurs
 Route::get('points-livreurs', [PointsLivreurController::class, 'index'])->name('points-livreurs.index');
+Route::get('points-livreurs/liste-montants', [PointsLivreurController::class, 'listeMontants'])->name('points-livreurs.liste-montants');
 Route::get('points-livreurs/print-depot', [PointsLivreurController::class, 'printDepot'])->name('points-livreurs.print-depot');
 Route::post('points-livreurs', [PointsLivreurController::class, 'store'])->name('points-livreurs.store');
 Route::put('points-livreurs/{pointsLivreur}', [PointsLivreurController::class, 'update'])->name('points-livreurs.update');

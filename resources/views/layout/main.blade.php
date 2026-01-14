@@ -336,7 +336,7 @@
                 </a>
               </li>
               <li class="nav-item">
-                <a href="pages/charts/inline.html" class="nav-link">
+                <a href="{{ route('points-livreurs.liste-montants') }}" class="nav-link">
                   <i class="fas fa-money-bill-wave nav-icon"></i>
                   <p>Liste des montants</p>
                 </a>

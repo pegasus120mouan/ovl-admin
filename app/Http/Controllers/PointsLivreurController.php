@@ -69,6 +69,69 @@ class PointsLivreurController extends Controller
         ));
     }
 
+    public function listeMontants(Request $request)
+    {
+        $dateDebut = $request->get('date_debut');
+        $dateFin = $request->get('date_fin');
+        $livreurId = $request->get('livreur_id');
+        $perPage = $request->get('per_page', 50);
+
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+
+        $statsBaseQuery = Commande::query();
+        if ($livreurId) {
+            $statsBaseQuery->where('livreur_id', $livreurId);
+        }
+
+        $statsMois = [
+            'recus' => (clone $statsBaseQuery)->whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
+            'livrees' => (clone $statsBaseQuery)->where('statut', 'Livré')->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])->count(),
+            'non_livrees' => (clone $statsBaseQuery)->where('statut', 'Non Livré')->whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
+            'retours' => (clone $statsBaseQuery)->where('statut', 'Retour')->whereBetween('date_retour', [$startOfMonth, $endOfMonth])->count(),
+        ];
+
+        if ($dateDebut && $dateFin && Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->back()->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $query = Commande::query()
+            ->join('utilisateurs as livreurs', 'livreurs.id', '=', 'commandes.livreur_id')
+            ->where('commandes.statut', 'Livré')
+            ->whereNotNull('commandes.date_livraison')
+            ->selectRaw("commandes.livreur_id, livreurs.nom, livreurs.prenoms, DATE(commandes.date_livraison) as jour, SUM(commandes.cout_livraison) as montant")
+            ->groupBy('commandes.livreur_id', 'livreurs.nom', 'livreurs.prenoms', 'jour');
+
+        if ($dateDebut) {
+            $query->whereDate('commandes.date_livraison', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->whereDate('commandes.date_livraison', '<=', $dateFin);
+        }
+
+        if ($livreurId) {
+            $query->where('commandes.livreur_id', $livreurId);
+        }
+
+        $rows = $query
+            ->orderByDesc('jour')
+            ->orderBy('livreurs.nom')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $livreurs = Utilisateur::livreurs()->get();
+
+        return view('points_livreurs.liste_montants', compact(
+            'rows',
+            'livreurs',
+            'dateDebut',
+            'dateFin',
+            'livreurId',
+            'statsMois'
+        ));
+    }
+
     public function printDepot(Request $request)
     {
         $utilisateurId = $request->get('utilisateur_id');
