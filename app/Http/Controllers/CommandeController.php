@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Models\CoutLivraison;
 use App\Models\Boutique;
+use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -12,6 +13,44 @@ use Carbon\Carbon;
 
 class CommandeController extends Controller
 {
+    private function syncRecettePointLivreur(?int $livreurId, $date): void
+    {
+        if (!$livreurId || !$date) {
+            return;
+        }
+
+        $date = Carbon::parse($date)->toDateString();
+
+        $recette = (int) Commande::query()
+            ->where('livreur_id', $livreurId)
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', $date)
+            ->sum('cout_livraison');
+
+        $pointLivreur = PointsLivreur::query()
+            ->where('utilisateur_id', $livreurId)
+            ->whereDate('date_commande', $date)
+            ->first();
+
+        if ($pointLivreur) {
+            $pointLivreur->recette = $recette;
+            $pointLivreur->gain_jour = $recette - ((int) ($pointLivreur->depense ?? 0));
+            $pointLivreur->save();
+            return;
+        }
+
+        if ($recette > 0) {
+            PointsLivreur::create([
+                'utilisateur_id' => $livreurId,
+                'recette' => $recette,
+                'depense' => 0,
+                'gain_jour' => $recette,
+                'date_commande' => $date,
+            ]);
+        }
+    }
+
     public function index()
     {
         $perPage = request('per_page', 20);
@@ -126,6 +165,10 @@ class CommandeController extends Controller
 
         $commande = Commande::create($validated);
 
+        if (($commande->statut ?? null) === 'Livré') {
+            $this->syncRecettePointLivreur($commande->livreur_id, $commande->date_livraison);
+        }
+
         $redirectTo = $request->input('redirect_to');
         if (is_string($redirectTo) && $redirectTo !== '') {
             return redirect()->to($redirectTo)->with('success', 'Commande enregistrée avec succès');
@@ -141,6 +184,10 @@ class CommandeController extends Controller
 
     public function update(Request $request, Commande $commande)
     {
+        $oldLivreurId = $commande->livreur_id;
+        $oldStatut = $commande->statut;
+        $oldDateLivraison = $commande->date_livraison;
+
         $validated = $request->validate([
             'utilisateur_id' => 'nullable|exists:utilisateurs,id',
             'livreur_id' => 'nullable|exists:utilisateurs,id',
@@ -184,6 +231,14 @@ class CommandeController extends Controller
         }
 
         $commande->update($validated);
+
+        if ($oldStatut === 'Livré') {
+            $this->syncRecettePointLivreur($oldLivreurId, $oldDateLivraison);
+        }
+
+        if (($commande->statut ?? null) === 'Livré') {
+            $this->syncRecettePointLivreur($commande->livreur_id, $commande->date_livraison);
+        }
 
         $redirectTo = $request->input('redirect_to');
         if (is_string($redirectTo) && $redirectTo !== '') {
@@ -264,19 +319,37 @@ class CommandeController extends Controller
 
     public function marquerLivre(Commande $commande)
     {
+        $oldLivreurId = $commande->livreur_id;
+        $oldStatut = $commande->statut;
+        $oldDateLivraison = $commande->date_livraison;
+
         $commande->update([
             'statut' => 'Livré',
             'date_livraison' => now()->toDateString(),
         ]);
+
+        if ($oldStatut === 'Livré') {
+            $this->syncRecettePointLivreur($oldLivreurId, $oldDateLivraison);
+        }
+
+        $this->syncRecettePointLivreur($commande->livreur_id, $commande->date_livraison);
         return response()->json($commande);
     }
 
     public function marquerRetour(Commande $commande)
     {
+        $oldLivreurId = $commande->livreur_id;
+        $oldStatut = $commande->statut;
+        $oldDateLivraison = $commande->date_livraison;
+
         $commande->update([
             'statut' => 'Retour',
             'date_retour' => now()->toDateString(),
         ]);
+
+        if ($oldStatut === 'Livré') {
+            $this->syncRecettePointLivreur($oldLivreurId, $oldDateLivraison);
+        }
         return response()->json($commande);
     }
 

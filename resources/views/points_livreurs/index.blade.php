@@ -48,6 +48,11 @@
     <div class="col-12">
       <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#modalAjouterPoint"><i class="fas fa-edit"></i> Enregistrer un point</a>
       <a href="#" class="btn btn-danger"><i class="fas fa-file-export"></i> Exporter un point</a>
+      <form action="{{ route('points-livreurs.sync-recettes') }}" method="POST" class="d-inline">
+        @csrf
+        <input type="date" name="date" value="{{ request('date', date('Y-m-d')) }}" class="form-control d-inline-block" style="width: 170px; vertical-align: middle;">
+        <button type="submit" class="btn btn-success" style="vertical-align: middle;"><i class="fas fa-sync-alt"></i> Sync recettes</button>
+      </form>
     </div>
   </div>
 
