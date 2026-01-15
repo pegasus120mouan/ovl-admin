@@ -159,6 +159,11 @@
                   </select>
                 </div>
 
+                <div class="form-group">
+                  <label for="salaire_mensuel">Salaire mensuel</label>
+                  <input type="number" name="salaire_mensuel" id="salaire_mensuel" class="form-control" value="{{ $livreur->salaire_mensuel ?? '' }}" min="0" step="1">
+                </div>
+
                 <button type="submit" class="btn btn-primary">Modifier</button>
               </form>
 

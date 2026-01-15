@@ -490,15 +490,15 @@
             <a href="#" class="nav-link">
               <i class="nav-icon far fa-envelope"></i>
               <p>
-                Mailbox
+                Facturation
                 <i class="fas fa-angle-left right"></i>
               </p>
             </a>
             <ul class="nav nav-treeview">
               <li class="nav-item">
-                <a href="pages/mailbox/mailbox.html" class="nav-link">
+                <a href="{{ route('factures.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Inbox</p>
+                  <p>Générer une facture</p>
                 </a>
               </li>
               <li class="nav-item">
@@ -514,6 +514,13 @@
                 </a>
               </li>
             </ul>
+          </li>
+
+          <li class="nav-item">
+            <a href="{{ route('paies.periodes.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-hand-holding-usd"></i>
+              <p>Paie livreurs</p>
+            </a>
           </li>
           <li class="nav-item">
             <a href="#" class="nav-link">
@@ -868,6 +875,23 @@
 
     <!-- Main content -->
     <section class="content">
+      @if (session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+      @endif
+
+      @if (session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+      @endif
+
+      @if ($errors->any())
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+              <li>{{ $error }}</li>
+            @endforeach
+          </ul>
+        </div>
+      @endif
       @yield('content')
     </section>
     <!-- /.content -->

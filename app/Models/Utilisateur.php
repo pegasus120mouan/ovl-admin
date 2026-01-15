@@ -23,6 +23,7 @@ class Utilisateur extends Model
         'role',
         'boutique_id',
         'statut_compte',
+        'salaire_mensuel',
     ];
 
     protected $hidden = [

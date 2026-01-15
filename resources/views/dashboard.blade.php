@@ -2,7 +2,7 @@
 
 @section('title', 'Tableau de bord')
 
-@section('page_title', 'Dashboard')
+@section('page_title', 'Tableau de bord')
 
 @section('content')
     <style>
@@ -12,21 +12,26 @@
             font-weight: 700;
             letter-spacing: 0.06em;
             padding: 10px 14px;
-            border-radius: 2px 2px 0 0;
+            border-radius: 6px 6px 0 0;
             text-transform: uppercase;
             font-size: 14px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         }
         .ovl-panel-body {
             background: #ffffff;
             border: 1px solid rgba(0, 0, 0, 0.07);
             border-top: 0;
             padding: 14px;
+            border-radius: 0 0 6px 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
         }
         .ovl-kpi {
             border: 1px solid rgba(0, 0, 0, 0.07);
             background: #ffffff;
             padding: 14px;
             height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         .ovl-kpi .ovl-kpi-label {
             font-size: 11px;
@@ -45,7 +50,8 @@
             color: #ffffff;
             padding: 14px;
             height: 100%;
-            border-radius: 2px;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
         }
         .ovl-tile-green .ovl-tile-label {
             font-size: 11px;
@@ -96,6 +102,9 @@
             border-bottom: 1px solid rgba(0, 0, 0, 0.04);
             font-size: 13px;
         }
+        .ovl-list-compact li:last-child {
+            border-bottom: 0;
+        }
         .ovl-dot {
             width: 9px;
             height: 9px;
@@ -115,6 +124,56 @@
     </style>
 
     <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ number_format($nbColisLivresMois ?? 0, 0, ',', ' ') }}</h3>
+                        <p>Total colis livrés ce mois</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-cash"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{ number_format($montantLivraisonsPayeesMois ?? 0, 0, ',', ' ') }}</h3>
+                        <p>Total livraisons payées ce mois</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-ios-list"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{ number_format($depensesMois ?? 0, 0, ',', ' ') }}</h3>
+                        <p>Dépenses Effectuées ce mois</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-alert-circled"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-primary">
+                    <div class="inner">
+                        <h3>{{ number_format(($gainMois ?? 0), 0, ',', ' ') }}</h3>
+                        <p>Gain du mois en cours</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-stats-bars"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-lg-4">
                 <div class="ovl-kpi">
@@ -240,15 +299,22 @@
 
                         <div class="col-lg-3 col-md-6 mt-3 mt-lg-0">
                             <div class="ovl-kpi" style="border-left: 6px solid #6c757d;">
-                                <div class="ovl-kpi-label">Charges fixes</div>
+                                <div class="ovl-kpi-label">Dépenses fonctionnement</div>
                                 <div class="ovl-kpi-value" style="font-size: 22px;">{{ number_format($chargesFixesAnnee ?? 0, 0, ',', ' ') }} XOF</div>
                             </div>
                         </div>
 
                         <div class="col-lg-3 col-md-6 mt-3 mt-lg-0">
+                            <div class="ovl-kpi" style="border-left: 6px solid #0d6efd;">
+                                <div class="ovl-kpi-label">Paiement livreurs</div>
+                                <div class="ovl-kpi-value" style="font-size: 22px;">{{ number_format($paiementLivreursAnnee ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 mt-3 mt-lg-0">
                             <div class="ovl-kpi" style="border-left: 6px solid #ffc107;">
-                                <div class="ovl-kpi-label">Epargnes</div>
-                                <div class="ovl-kpi-value" style="font-size: 22px;">{{ number_format($epargnesAnnee ?? 0, 0, ',', ' ') }} XOF</div>
+                                <div class="ovl-kpi-label">Gain</div>
+                                <div class="ovl-kpi-value" style="font-size: 22px;">{{ number_format($gainSyntheseAnnee ?? 0, 0, ',', ' ') }} XOF</div>
                             </div>
                         </div>
                     </div>

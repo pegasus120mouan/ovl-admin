@@ -16,6 +16,8 @@ use App\Http\Controllers\PrixController;
 use App\Http\Controllers\EnginController;
 use App\Http\Controllers\TypeEnginController;
 use App\Http\Controllers\ContratController;
+use App\Http\Controllers\FactureController;
+use App\Http\Controllers\PaieController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -136,3 +138,26 @@ Route::patch('users/livreurs/{livreur}/toggle-statut', [UtilisateurController::c
 
 Route::get('users/gestion-statuts', [UtilisateurController::class, 'gestionStatutsWeb'])->name('users.gestion-statuts');
 Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class, 'toggleStatutWeb'])->name('users.toggle-statut');
+
+// Factures
+Route::get('factures', [FactureController::class, 'index'])->name('factures.index');
+Route::post('factures', [FactureController::class, 'store'])->name('factures.store');
+Route::get('factures/{facture}', [FactureController::class, 'show'])->name('factures.show');
+Route::get('factures/{facture}/print', [FactureController::class, 'print'])->name('factures.print');
+Route::post('factures/{facture}/lignes', [FactureController::class, 'storeLigne'])->name('factures.lignes.store');
+Route::delete('factures/{facture}/lignes/{ligne}', [FactureController::class, 'destroyLigne'])->name('factures.lignes.destroy');
+
+// Paie Livreurs
+Route::get('paies', [PaieController::class, 'index'])->name('paies.periodes.index');
+Route::post('paies', [PaieController::class, 'storePeriode'])->name('paies.periodes.store');
+Route::get('paies/fiches/{fiche}', [PaieController::class, 'showFiche'])->name('paies.fiches.show');
+Route::post('paies/fiches/{fiche}/ajustements', [PaieController::class, 'storeAjustement'])->name('paies.fiches.ajustements.store');
+Route::patch('paies/fiches/{fiche}/valider', [PaieController::class, 'validerFiche'])->name('paies.fiches.valider');
+Route::post('paies/fiches/{fiche}/payer', [PaieController::class, 'payerFiche'])->name('paies.fiches.payer');
+
+Route::patch('paies/ajustements/{ajustement}/approuver', [PaieController::class, 'approuverAjustement'])->name('paies.ajustements.approuver');
+Route::patch('paies/ajustements/{ajustement}/refuser', [PaieController::class, 'refuserAjustement'])->name('paies.ajustements.refuser');
+
+Route::get('paies/{periode}', [PaieController::class, 'showPeriode'])->name('paies.periodes.show');
+Route::post('paies/{periode}/generer-fiches', [PaieController::class, 'genererFiches'])->name('paies.periodes.generer-fiches');
+Route::delete('paies/{periode}', [PaieController::class, 'destroyPeriode'])->name('paies.periodes.destroy');

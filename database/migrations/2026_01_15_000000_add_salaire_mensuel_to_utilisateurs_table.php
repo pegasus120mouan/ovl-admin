@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         if (!Schema::hasTable('utilisateurs')) {
@@ -16,13 +13,12 @@ return new class extends Migration
         }
 
         Schema::table('utilisateurs', function (Blueprint $table) {
-            $table->string('code_pin', 6)->nullable()->after('password');
+            if (!Schema::hasColumn('utilisateurs', 'salaire_mensuel')) {
+                $table->unsignedBigInteger('salaire_mensuel')->nullable()->after('statut_compte');
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         if (!Schema::hasTable('utilisateurs')) {
@@ -30,7 +26,9 @@ return new class extends Migration
         }
 
         Schema::table('utilisateurs', function (Blueprint $table) {
-            $table->dropColumn('code_pin');
+            if (Schema::hasColumn('utilisateurs', 'salaire_mensuel')) {
+                $table->dropColumn('salaire_mensuel');
+            }
         });
     }
 };

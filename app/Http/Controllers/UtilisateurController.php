@@ -432,8 +432,8 @@ class UtilisateurController extends Controller
             $admin->update($data);
         }
 
-        $sessionUser = Session::get('utilisateur');
-        if (is_array($sessionUser) && (($sessionUser['id'] ?? null) == $admin->id)) {
+        $sessionUser = Session::get('utilisateur', []);
+        if (is_array($sessionUser) && !empty($sessionUser['id']) && (int) $sessionUser['id'] === (int) $admin->id) {
             $sessionUser['nom'] = $admin->nom;
             $sessionUser['prenoms'] = $admin->prenoms;
             $sessionUser['login'] = $admin->login;
@@ -521,6 +521,7 @@ class UtilisateurController extends Controller
             'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $livreur->id,
             'password' => 'sometimes|nullable|string|min:4|confirmed',
             'statut_compte' => 'sometimes|nullable|boolean',
+            'salaire_mensuel' => 'sometimes|nullable|integer|min:0',
             'avatar' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
             'redirect_to' => 'sometimes|nullable|string',
         ]);
@@ -541,6 +542,9 @@ class UtilisateurController extends Controller
         }
         if (array_key_exists('statut_compte', $validated)) {
             $data['statut_compte'] = $validated['statut_compte'];
+        }
+        if (array_key_exists('salaire_mensuel', $validated)) {
+            $data['salaire_mensuel'] = $validated['salaire_mensuel'];
         }
 
         if (!empty($validated['password'] ?? null)) {

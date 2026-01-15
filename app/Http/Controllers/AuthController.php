@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
+use App\Models\PaieLivreur;
+use App\Models\PaiePeriode;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Illuminate\Support\Facades\DB;
@@ -72,8 +74,47 @@ class AuthController extends Controller
             return redirect()->route('login');
         }
 
+        $totalPaieMontantPaye = (int) PaieLivreur::query()
+            ->where('statut', 'Payé')
+            ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
+        $nbFichesPayees = (int) PaieLivreur::query()->where('statut', 'Payé')->count();
+        $nbFichesAPayer = (int) PaieLivreur::query()->where('statut', '!=', 'Payé')->count();
+        $nbPeriodesPayees = (int) PaiePeriode::query()->where('statut', 'Payé')->count();
+        $nbPeriodesEnCours = (int) PaiePeriode::query()->where('statut', 'En cours')->count();
+
         $startOfYear = Carbon::now()->startOfYear()->toDateString();
         $today = Carbon::now()->toDateString();
+
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $nbColisLivresMois = (int) Commande::query()
+            ->where('statut', 'Livré')
+            ->whereBetween('date_livraison', [$startOfMonth, $today])
+            ->count();
+
+        $montantLivraisonsPayeesMois = (int) Commande::query()
+            ->where('statut', 'Livré')
+            ->whereBetween('date_livraison', [$startOfMonth, $today])
+            ->sum('cout_livraison');
+
+        $depensesLivreursMois = (int) PointsLivreur::query()
+            ->whereBetween('date_commande', [$startOfMonth, $today])
+            ->sum('depense');
+
+        $paieLivreursMois = (int) PaieLivreur::query()
+            ->where('statut', 'Payé')
+            ->whereDate('date_paiement', '>=', $startOfMonth)
+            ->whereDate('date_paiement', '<=', $today)
+            ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
+
+        $depensesMois = $depensesLivreursMois + $paieLivreursMois;
+
+        $gainMois = (int) $montantLivraisonsPayeesMois - (int) $depensesMois;
+
+        $paiementLivreursAnnee = (int) PaieLivreur::query()
+            ->where('statut', 'Payé')
+            ->whereDate('date_paiement', '>=', $startOfYear)
+            ->whereDate('date_paiement', '<=', $today)
+            ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
 
         $nbColisRecusAnnee = Commande::whereBetween('date_reception', [$startOfYear, $today])->count();
         $nbColisLivresAnnee = Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfYear, $today])->count();
@@ -88,6 +129,8 @@ class AuthController extends Controller
         $epargnesAnnee = (int) PointsLivreur::query()
             ->whereBetween('date_commande', [$startOfYear, $today])
             ->sum('gain_jour');
+
+        $gainSyntheseAnnee = (int) $chargesVariablesAnnee - ((int) $chargesFixesAnnee + (int) $paiementLivreursAnnee);
 
         $totalCommandesAnnee = (int) Commande::query()
             ->whereDate('date_reception', '>=', $startOfYear)
@@ -184,6 +227,17 @@ class AuthController extends Controller
             'chargesVariablesAnnee',
             'chargesFixesAnnee',
             'epargnesAnnee',
+            'paiementLivreursAnnee',
+            'gainSyntheseAnnee',
+            'nbColisLivresMois',
+            'montantLivraisonsPayeesMois',
+            'depensesMois',
+            'gainMois',
+            'totalPaieMontantPaye',
+            'nbFichesPayees',
+            'nbFichesAPayer',
+            'nbPeriodesPayees',
+            'nbPeriodesEnCours',
             'repartitionBoutiquesLabels',
             'repartitionBoutiquesData',
             'repartitionClientsLabels',
