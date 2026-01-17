@@ -12,7 +12,9 @@ class Dette extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'remboursable',
         'nom_debiteur',
+        'motifs',
         'montant_initial',
         'montant_actuel',
         'montants_payes',
@@ -23,6 +25,8 @@ class Dette extends Model
     ];
 
     protected $casts = [
+        'remboursable' => 'boolean',
+        'motifs' => 'string',
         'montant_initial' => 'decimal:2',
         'montant_actuel' => 'decimal:2',
         'montants_payes' => 'decimal:2',

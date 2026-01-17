@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
+use App\Models\Dette;
+use App\Models\Facture;
 use App\Models\PaieLivreur;
 use App\Models\PaiePeriode;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
+use App\Models\Versement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -85,6 +88,32 @@ class AuthController extends Controller
         $startOfYear = Carbon::now()->startOfYear()->toDateString();
         $today = Carbon::now()->toDateString();
 
+        $facturesParStatut = Facture::query()
+            ->whereDate('date_facture', '>=', $startOfYear)
+            ->whereDate('date_facture', '<=', $today)
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        $montantFacturesTotal = (int) Facture::query()->sum('total_ttc');
+
+        $montantDettesTotal = (int) Dette::query()->sum('montant_actuel');
+
+        $montantDettesRembourseesTotal = (int) Dette::query()->sum('montants_payes');
+
+        $montantDettesRestantTotal = max(0, (int) $montantDettesTotal - (int) $montantDettesRembourseesTotal);
+
+        $montantFacturesValideesAnnee = (int) Facture::query()
+            ->where('statut', 'Validé')
+            ->whereDate('date_facture', '>=', $startOfYear)
+            ->whereDate('date_facture', '<=', $today)
+            ->sum('total_ttc');
+
+        $nbFacturesBrouillon = (int) ($facturesParStatut['Brouillon'] ?? 0);
+        $nbFacturesValidees = (int) ($facturesParStatut['Validé'] ?? 0);
+        $nbFacturesPayees = (int) ($facturesParStatut['Payé'] ?? 0);
+        $nbFacturesTotal = $nbFacturesBrouillon + $nbFacturesValidees + $nbFacturesPayees;
+
         $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
         $nbColisLivresMois = (int) Commande::query()
             ->where('statut', 'Livré')
@@ -96,6 +125,12 @@ class AuthController extends Controller
             ->whereBetween('date_livraison', [$startOfMonth, $today])
             ->sum('cout_livraison');
 
+        $montantFacturesPayeesMois = (int) Facture::query()
+            ->where('statut', 'Payé')
+            ->whereDate('date_facture', '>=', $startOfMonth)
+            ->whereDate('date_facture', '<=', $today)
+            ->sum('total_ttc');
+
         $depensesLivreursMois = (int) PointsLivreur::query()
             ->whereBetween('date_commande', [$startOfMonth, $today])
             ->sum('depense');
@@ -106,9 +141,11 @@ class AuthController extends Controller
             ->whereDate('date_paiement', '<=', $today)
             ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
 
-        $depensesMois = $depensesLivreursMois + $paieLivreursMois;
+        $depensesMois = (int) $depensesLivreursMois
+            + (int) $paieLivreursMois
+            + (int) $montantDettesRestantTotal;
 
-        $gainMois = (int) $montantLivraisonsPayeesMois - (int) $depensesMois;
+        $gainMois = ((int) $montantLivraisonsPayeesMois + (int) $montantFacturesPayeesMois) - (int) $depensesMois;
 
         $paiementLivreursAnnee = (int) PaieLivreur::query()
             ->where('statut', 'Payé')
@@ -122,6 +159,7 @@ class AuthController extends Controller
         $nbColisRetoursAnnee = Commande::where('statut', 'Retour')->whereBetween('date_retour', [$startOfYear, $today])->count();
 
         $revenusTotalAnnee = (int) Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfYear, $today])->sum('cout_global');
+        $montantLivraisonsValideesAnnee = (int) Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfYear, $today])->sum('cout_global');
         $chargesVariablesAnnee = (int) Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfYear, $today])->sum('cout_livraison');
         $chargesFixesAnnee = (int) PointsLivreur::query()
             ->whereBetween('date_commande', [$startOfYear, $today])
@@ -223,6 +261,16 @@ class AuthController extends Controller
             'nbColisLivresAnnee',
             'nbColisNonLivresAnnee',
             'nbColisRetoursAnnee',
+            'nbFacturesTotal',
+            'nbFacturesBrouillon',
+            'nbFacturesValidees',
+            'nbFacturesPayees',
+            'montantFacturesValideesAnnee',
+            'montantFacturesTotal',
+            'montantDettesTotal',
+            'montantDettesRembourseesTotal',
+            'montantDettesRestantTotal',
+            'montantLivraisonsValideesAnnee',
             'revenusTotalAnnee',
             'chargesVariablesAnnee',
             'chargesFixesAnnee',
@@ -231,6 +279,7 @@ class AuthController extends Controller
             'gainSyntheseAnnee',
             'nbColisLivresMois',
             'montantLivraisonsPayeesMois',
+            'montantFacturesPayeesMois',
             'depensesMois',
             'gainMois',
             'totalPaieMontantPaye',

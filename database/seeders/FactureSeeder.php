@@ -84,7 +84,6 @@ class FactureSeeder extends Seeder
                         'designation' => $designation,
                         'prix_unitaire' => $prixUnitaire,
                         'prix_total' => $prixTotal,
-                        'statut' => $commande->statut,
                     ]);
 
                     $total += $prixTotal;

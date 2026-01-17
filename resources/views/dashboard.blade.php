@@ -177,20 +177,47 @@
         <div class="row">
             <div class="col-lg-4">
                 <div class="ovl-kpi">
-                    <div class="ovl-kpi-label">Page Engagement</div>
+                    <div class="ovl-kpi-label">Colis Recus</div>
                     <div class="ovl-kpi-value">{{ number_format($nbColisRecusAnnee ?? 0, 0, ',', ' ') }}</div>
                     <div class="ovl-chart-wrap">
                         <canvas id="ovlPageEngagement"></canvas>
                     </div>
-                    <div class="ovl-mini-metric">
-                        <div class="ovl-mini-item">
-                            <div>Previous period</div>
-                            <strong><span class="ovl-delta down">-35%</span></strong>
+
+                    <div class="row mt-3" style="gap: 10px;">
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <div class="ovl-kpi" style="border-left: 6px solid #6c757d; padding: 10px 12px; box-shadow: none;">
+                                <div class="ovl-kpi-label" style="margin-bottom: 4px;">Montant Total Factures</div>
+                                <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantFacturesTotal ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
                         </div>
-                        <div class="ovl-mini-item">
-                            <div>Previous year</div>
-                            <strong><span class="ovl-delta up">23%</span></strong>
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <div class="ovl-kpi" style="border-left: 6px solid #17a2b8; padding: 10px 12px; box-shadow: none;">
+                                <div class="ovl-kpi-label" style="margin-bottom: 4px;">Montant Factures en attente</div>
+                                <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantFacturesValideesAnnee ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
                         </div>
+
+                        <div class="row mt-3" style="gap: 10px;">
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <div class="ovl-kpi" style="border-left: 6px solid #6c757d; padding: 10px 12px; box-shadow: none;">
+                                <div class="ovl-kpi-label" style="margin-bottom: 4px;">Montant Total Dettes</div>
+                                <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantDettesTotal ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <div class="ovl-kpi" style="border-left: 6px solid #17a2b8; padding: 10px 12px; box-shadow: none;">
+                                <div class="ovl-kpi-label" style="margin-bottom: 4px;">Montant Dettes remboursées</div>
+                                <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantDettesRembourseesTotal ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <div class="ovl-kpi" style="border-left: 6px solid #17a2b8; padding: 10px 12px; box-shadow: none;">
+                                <div class="ovl-kpi-label" style="margin-bottom: 4px;">Montant dette restant à payer</div>
+                                <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantDettesRestantTotal ?? 0, 0, ',', ' ') }} XOF</div>
+                            </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -304,6 +331,8 @@
                             </div>
                         </div>
 
+
+
                         <div class="col-lg-3 col-md-6 mt-3 mt-lg-0">
                             <div class="ovl-kpi" style="border-left: 6px solid #0d6efd;">
                                 <div class="ovl-kpi-label">Paiement livreurs</div>
@@ -401,6 +430,7 @@
                         labels: ['L', 'M', 'M', 'J', 'V', 'S', 'D'],
                         datasets: [
                             {
+                                label: 'Colis reçus',
                                 data: [18, 12, 10, 11, 9, 14, 19],
                                 borderColor: '#2bb3c0',
                                 backgroundColor: 'rgba(43, 179, 192, 0.12)',

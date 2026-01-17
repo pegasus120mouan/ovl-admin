@@ -17,7 +17,6 @@ class FactureLigne extends Model
         'designation',
         'prix_unitaire',
         'prix_total',
-        'statut',
     ];
 
     public function facture(): BelongsTo

@@ -129,7 +129,6 @@ class FactureController extends Controller
                     'designation' => $designation,
                     'prix_unitaire' => $prixUnitaire,
                     'prix_total' => $prixTotal,
-                    'statut' => $commande->statut,
                 ]);
 
                 $total += $prixTotal;
@@ -159,7 +158,6 @@ class FactureController extends Controller
             'quantite' => 'required|integer|min:1',
             'designation' => 'required|string',
             'prix_unitaire' => 'required|integer|min:0',
-            'statut' => 'nullable|string',
         ]);
 
         $prixTotal = ((int) $validated['quantite']) * ((int) $validated['prix_unitaire']);
@@ -171,12 +169,36 @@ class FactureController extends Controller
             'designation' => $validated['designation'],
             'prix_unitaire' => (int) $validated['prix_unitaire'],
             'prix_total' => $prixTotal,
-            'statut' => $validated['statut'] ?? null,
         ]);
 
         $this->recalcTotaux($facture);
 
         return redirect()->back()->with('success', 'Ligne ajoutée.');
+    }
+
+    public function updateLigne(Request $request, Facture $facture, FactureLigne $ligne)
+    {
+        if ($ligne->facture_id !== $facture->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'quantite' => 'required|integer|min:1',
+            'designation' => 'required|string',
+            'prix_unitaire' => 'required|integer|min:0',
+        ]);
+
+        $prixTotal = ((int) $validated['quantite']) * ((int) $validated['prix_unitaire']);
+
+        $ligne->quantite = (int) $validated['quantite'];
+        $ligne->designation = $validated['designation'];
+        $ligne->prix_unitaire = (int) $validated['prix_unitaire'];
+        $ligne->prix_total = $prixTotal;
+        $ligne->save();
+
+        $this->recalcTotaux($facture);
+
+        return redirect()->back()->with('success', 'Ligne modifiée.');
     }
 
     public function destroyLigne(Facture $facture, FactureLigne $ligne)
@@ -197,6 +219,31 @@ class FactureController extends Controller
         return view('factures.show', compact('facture'));
     }
 
+    public function updateStatut(Request $request, Facture $facture)
+    {
+        $validated = $request->validate([
+            'statut' => 'required|string|in:Brouillon,Validé,Payé',
+        ]);
+
+        $current = $facture->statut ?? 'Brouillon';
+        $next = $validated['statut'];
+
+        $allowedTransitions = [
+            'Brouillon' => ['Validé'],
+            'Validé' => ['Payé'],
+            'Payé' => [],
+        ];
+
+        if (!in_array($next, $allowedTransitions[$current] ?? [], true)) {
+            abort(403);
+        }
+
+        $facture->statut = $next;
+        $facture->save();
+
+        return redirect()->back()->with('success', 'Statut de la facture mis à jour.');
+    }
+
     public function print(Facture $facture)
     {
         $facture->load(['client', 'lignes']);
@@ -207,5 +254,17 @@ class FactureController extends Controller
 
         $fileName = 'Facture_' . str_replace('/', '-', $facture->numero) . '.pdf';
         return $pdf->stream($fileName);
+    }
+
+    public function download(Facture $facture)
+    {
+        $facture->load(['client', 'lignes']);
+
+        $pdf = Pdf::loadView('factures.print', [
+            'facture' => $facture,
+        ]);
+
+        $fileName = 'Facture_' . str_replace('/', '-', $facture->numero) . '.pdf';
+        return $pdf->download($fileName);
     }
 }

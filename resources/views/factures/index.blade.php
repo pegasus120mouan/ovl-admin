@@ -91,6 +91,7 @@
                   <td>
                     <a class="btn btn-sm btn-primary" href="{{ route('factures.show', $facture->id) }}"><i class="fas fa-eye"></i></a>
                     <a class="btn btn-sm btn-success" href="{{ route('factures.print', $facture->id) }}" target="_blank"><i class="fas fa-print"></i></a>
+                    <a class="btn btn-sm btn-info" href="{{ route('factures.download', $facture->id) }}"><i class="fas fa-download"></i></a>
                   </td>
                 </tr>
               @empty

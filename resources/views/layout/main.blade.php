@@ -522,6 +522,13 @@
               <p>Paie livreurs</p>
             </a>
           </li>
+
+          <li class="nav-item">
+            <a href="{{ route('dettes-internes.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-book"></i>
+              <p>Dettes internes</p>
+            </a>
+          </li>
           <li class="nav-item">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-book"></i>
@@ -876,15 +883,15 @@
     <!-- Main content -->
     <section class="content">
       @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
+        <div class="alert alert-success js-auto-dismiss" role="alert">{{ session('success') }}</div>
       @endif
 
       @if (session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
+        <div class="alert alert-danger js-auto-dismiss" role="alert">{{ session('error') }}</div>
       @endif
 
       @if ($errors->any())
-        <div class="alert alert-danger">
+        <div class="alert alert-danger js-auto-dismiss" role="alert">
           <ul class="mb-0">
             @foreach ($errors->all() as $error)
               <li>{{ $error }}</li>
@@ -940,5 +947,14 @@
 
 <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
 <script src="{{ asset('dist/js/pages/dashboard.js') }}"></script>
+<script>
+  $(function () {
+    setTimeout(function () {
+      $('.js-auto-dismiss').fadeOut(400, function () {
+        $(this).remove();
+      });
+    }, 4000);
+  });
+</script>
 </body>
 </html>

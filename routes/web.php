@@ -18,6 +18,7 @@ use App\Http\Controllers\TypeEnginController;
 use App\Http\Controllers\ContratController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\PaieController;
+use App\Http\Controllers\DettesInternesController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -143,9 +144,19 @@ Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class,
 Route::get('factures', [FactureController::class, 'index'])->name('factures.index');
 Route::post('factures', [FactureController::class, 'store'])->name('factures.store');
 Route::get('factures/{facture}', [FactureController::class, 'show'])->name('factures.show');
+Route::patch('factures/{facture}/statut', [FactureController::class, 'updateStatut'])->name('factures.statut.update');
 Route::get('factures/{facture}/print', [FactureController::class, 'print'])->name('factures.print');
+Route::get('factures/{facture}/download', [FactureController::class, 'download'])->name('factures.download');
 Route::post('factures/{facture}/lignes', [FactureController::class, 'storeLigne'])->name('factures.lignes.store');
+Route::put('factures/{facture}/lignes/{ligne}', [FactureController::class, 'updateLigne'])->name('factures.lignes.update');
 Route::delete('factures/{facture}/lignes/{ligne}', [FactureController::class, 'destroyLigne'])->name('factures.lignes.destroy');
+
+// Dettes internes
+Route::get('dettes-internes', [DettesInternesController::class, 'index'])->name('dettes-internes.index');
+Route::post('dettes-internes', [DettesInternesController::class, 'store'])->name('dettes-internes.store');
+Route::put('dettes-internes/{dette}', [DettesInternesController::class, 'update'])->name('dettes-internes.update');
+Route::delete('dettes-internes/{dette}', [DettesInternesController::class, 'destroy'])->name('dettes-internes.destroy');
+Route::post('dettes-internes/{dette}/versements', [DettesInternesController::class, 'storeVersement'])->name('dettes-internes.versements.store');
 
 // Paie Livreurs
 Route::get('paies', [PaieController::class, 'index'])->name('paies.periodes.index');
