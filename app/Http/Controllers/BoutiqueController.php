@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Boutique;
 use App\Models\Utilisateur;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class BoutiqueController extends Controller
@@ -48,6 +49,7 @@ class BoutiqueController extends Controller
                 'nom' => 'required|string|max:255',
                 'logo' => 'nullable|string|max:255',
                 'type_articles' => 'nullable|string|max:255',
+                'statut' => 'sometimes|boolean',
             ]);
 
             $boutique = Boutique::create($validated);
@@ -58,11 +60,13 @@ class BoutiqueController extends Controller
             'nom' => 'required|string|max:255',
             'type_articles' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'statut' => 'sometimes|boolean',
         ]);
 
         $data = [
             'nom' => $validated['nom'],
             'type_articles' => $validated['type_articles'] ?? null,
+            'statut' => array_key_exists('statut', $validated) ? (bool) $validated['statut'] : true,
         ];
 
         if ($request->hasFile('logo')) {
@@ -127,6 +131,7 @@ class BoutiqueController extends Controller
                 'nom' => 'sometimes|required|string|max:255',
                 'logo' => 'nullable|string|max:255',
                 'type_articles' => 'nullable|string|max:255',
+                'statut' => 'sometimes|boolean',
             ]);
 
             $boutique->update($validated);
@@ -138,6 +143,7 @@ class BoutiqueController extends Controller
             'type_articles' => 'sometimes|nullable|string|max:255',
             'gerant_id' => 'sometimes|nullable|integer|exists:utilisateurs,id',
             'logo' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'statut' => 'sometimes|boolean',
         ]);
 
         $data = [];
@@ -148,6 +154,10 @@ class BoutiqueController extends Controller
 
         if (array_key_exists('type_articles', $validated)) {
             $data['type_articles'] = $validated['type_articles'];
+        }
+
+        if (array_key_exists('statut', $validated)) {
+            $data['statut'] = (bool) $validated['statut'];
         }
 
         if ($request->hasFile('logo')) {
@@ -179,8 +189,47 @@ class BoutiqueController extends Controller
 
     public function destroy(Boutique $boutique)
     {
-        $boutique->delete();
-        return response()->json(null, 204);
+        $hasCommandes = $boutique->commandes()->exists();
+        if ($hasCommandes) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Impossible de supprimer cette boutique : des commandes y sont rattachées.',
+                ], 422);
+            }
+
+            return redirect()
+                ->route('boutiques.index')
+                ->with('error', 'Impossible de supprimer cette boutique : des commandes y sont rattachées.');
+        }
+
+        DB::transaction(function () use ($boutique) {
+            Utilisateur::where('boutique_id', $boutique->id)->update(['boutique_id' => null]);
+            $boutique->delete();
+        });
+
+        if (request()->expectsJson()) {
+            return response()->json(null, 204);
+        }
+
+        return redirect()
+            ->route('boutiques.index')
+            ->with('success', 'Boutique supprimée avec succès');
+    }
+
+    public function toggleStatut(Boutique $boutique)
+    {
+        $boutique->update(['statut' => !$boutique->statut]);
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'id' => $boutique->id,
+                'statut' => (bool) $boutique->statut,
+            ]);
+        }
+
+        return redirect()
+            ->route('boutiques.index')
+            ->with('success', 'Statut de la boutique mis à jour.');
     }
 
     public function getUtilisateurs(Boutique $boutique)

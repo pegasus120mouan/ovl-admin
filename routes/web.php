@@ -116,6 +116,8 @@ Route::get('boutiques', [BoutiqueController::class, 'index'])->name('boutiques.i
 Route::post('boutiques', [BoutiqueController::class, 'store'])->name('boutiques.store');
 Route::get('boutiques/{boutique}', [BoutiqueController::class, 'show'])->name('boutiques.show');
 Route::put('boutiques/{boutique}', [BoutiqueController::class, 'update'])->name('boutiques.update');
+Route::delete('boutiques/{boutique}', [BoutiqueController::class, 'destroy'])->name('boutiques.destroy');
+Route::patch('boutiques/{boutique}/toggle-statut', [BoutiqueController::class, 'toggleStatut'])->name('boutiques.toggle-statut');
 
 Route::get('users/administrateurs', [UtilisateurController::class, 'administrateurs'])->name('users.administrateurs');
 Route::get('users/livreurs', [UtilisateurController::class, 'livreurs'])->name('users.livreurs');

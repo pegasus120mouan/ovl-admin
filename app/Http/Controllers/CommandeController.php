@@ -98,7 +98,13 @@ class CommandeController extends Controller
         ];
 
         $coutsLivraison = CoutLivraison::all();
-        $boutiques = Boutique::all();
+        $boutiques = Boutique::query()
+            ->where('statut', 1)
+            ->with(['utilisateurs' => function ($q) {
+                $q->where('role', 'clients');
+            }])
+            ->orderBy('nom')
+            ->get();
         $livreurs = Utilisateur::livreurs()->get();
         return view('commandes.index', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs', 'statsMois'));
     }
@@ -117,7 +123,13 @@ class CommandeController extends Controller
             ->paginate($perPage)
             ->withQueryString();
         $coutsLivraison = CoutLivraison::all();
-        $boutiques = Boutique::all();
+        $boutiques = Boutique::query()
+            ->where('statut', 1)
+            ->with(['utilisateurs' => function ($q) {
+                $q->where('role', 'clients');
+            }])
+            ->orderBy('nom')
+            ->get();
         $livreurs = Utilisateur::livreurs()->get();
         return view('commandes.livrees', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs'));
     }
@@ -130,7 +142,13 @@ class CommandeController extends Controller
             ->orderBy('date_reception', 'desc')
             ->paginate($perPage);
         $coutsLivraison = CoutLivraison::all();
-        $boutiques = Boutique::all();
+        $boutiques = Boutique::query()
+            ->where('statut', 1)
+            ->with(['utilisateurs' => function ($q) {
+                $q->where('role', 'clients');
+            }])
+            ->orderBy('nom')
+            ->get();
         $livreurs = Utilisateur::livreurs()->get();
         return view('commandes.non-livrees', compact('commandes', 'coutsLivraison', 'boutiques', 'livreurs'));
     }

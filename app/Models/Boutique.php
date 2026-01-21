@@ -17,10 +17,15 @@ class Boutique extends Model
         'nom',
         'logo',
         'type_articles',
+        'statut',
     ];
 
     protected $attributes = [
         'logo' => 'boutiques/default_boutiques.png',
+    ];
+
+    protected $casts = [
+        'statut' => 'boolean',
     ];
 
     public function utilisateurs(): HasMany

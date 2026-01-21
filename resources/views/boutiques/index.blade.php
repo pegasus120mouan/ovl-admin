@@ -90,6 +90,9 @@
                 <th>Nom</th>
                 <th>Type articles</th>
                 <th>Gérant</th>
+                <th>Statut</th>
+                <th style="width: 140px;">Actions</th>
+                <th>Changer le statut</th>
               </tr>
             </thead>
             <tbody>
@@ -118,10 +121,44 @@
                     N/A
                   @endif
                 </td>
+                <td>
+                  @if($boutique->statut)
+                    <span class="badge badge-success">Actif</span>
+                  @else
+                    <span class="badge badge-danger">Inactif</span>
+                  @endif
+                </td>
+                <td style="white-space: nowrap;">
+                  <div class="d-inline-flex align-items-center">
+                    <a href="{{ route('boutiques.show', $boutique) }}" class="btn btn-sm btn-info" title="Voir"><i class="fas fa-eye"></i></a>
+                    <a href="#" class="btn btn-sm btn-warning ml-1" title="Modifier" data-toggle="modal" data-target="#modalModifier{{ $boutique->id }}"><i class="fas fa-edit"></i></a>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger ml-1"
+                      title="Supprimer"
+                      data-toggle="modal"
+                      data-target="#modalSupprimerBoutique"
+                      data-boutique-name="{{ $boutique->nom }}"
+                      data-delete-url="{{ route('boutiques.destroy', $boutique) }}"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <form action="{{ route('boutiques.toggle-statut', $boutique) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <div class="custom-control custom-switch switch-lg">
+                      <input type="checkbox" class="custom-control-input" id="toggleBoutiqueStatut{{ $boutique->id }}" {{ $boutique->statut ? 'checked' : '' }} onchange="this.form.submit()">
+                      <label class="custom-control-label" for="toggleBoutiqueStatut{{ $boutique->id }}"></label>
+                    </div>
+                  </form>
+                </td>
               </tr>
               @empty
               <tr>
-                <td colspan="4" class="text-center">Aucune boutique trouvée</td>
+                <td colspan="7" class="text-center">Aucune boutique trouvée</td>
               </tr>
               @endforelse
             </tbody>
@@ -173,6 +210,13 @@
             <input type="text" class="form-control" name="type_articles" placeholder="Ex: vêtements, chaussures...">
           </div>
           <div class="form-group">
+            <label>Statut</label>
+            <select class="form-control" name="statut">
+              <option value="1" selected>Actif</option>
+              <option value="0">Inactif</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Logo</label>
             <input type="file" class="form-control" name="logo" accept="image/*">
           </div>
@@ -185,4 +229,108 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="modalSupprimerBoutique" tabindex="-1" role="dialog" aria-labelledby="modalSupprimerBoutiqueLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger">
+        <h5 class="modal-title text-white" id="modalSupprimerBoutiqueLabel">Supprimer une boutique</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Vous êtes sur le point de supprimer la boutique :</p>
+        <p class="font-weight-bold mb-0" id="supprimerBoutiqueNom"></p>
+        <small class="text-muted">Cette action est irréversible.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <form id="formSupprimerBoutique" method="POST" class="d-inline">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="btn btn-danger">Supprimer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var modalId = '#modalSupprimerBoutique';
+
+    function fillDeleteModal(relatedTarget) {
+      if (!relatedTarget) return;
+
+      var boutiqueName = relatedTarget.getAttribute('data-boutique-name') || '';
+      var deleteUrl = relatedTarget.getAttribute('data-delete-url') || '';
+
+      var nameEl = document.getElementById('supprimerBoutiqueNom');
+      if (nameEl) nameEl.textContent = boutiqueName;
+
+      var form = document.getElementById('formSupprimerBoutique');
+      if (form && deleteUrl) form.setAttribute('action', deleteUrl);
+    }
+
+    if (window.jQuery && window.jQuery(modalId).on) {
+      window.jQuery(modalId).on('show.bs.modal', function (event) {
+        fillDeleteModal(event.relatedTarget);
+      });
+      return;
+    }
+
+    var modal = document.getElementById('modalSupprimerBoutique');
+    if (!modal) return;
+
+    modal.addEventListener('show.bs.modal', function (event) {
+      fillDeleteModal(event.relatedTarget);
+    });
+  });
+</script>
+
+<style>
+  .switch-lg {
+    transform: scale(1.4);
+    transform-origin: left center;
+  }
+</style>
+
+@foreach($boutiques as $boutique)
+<div class="modal fade" id="modalModifier{{ $boutique->id }}" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">Modifier la boutique</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <form action="{{ route('boutiques.update', $boutique) }}" method="POST">
+        @csrf
+        @method('PUT')
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nom</label>
+            <input type="text" class="form-control" name="nom" value="{{ $boutique->nom }}" required>
+          </div>
+          <div class="form-group">
+            <label>Type articles</label>
+            <input type="text" class="form-control" name="type_articles" value="{{ $boutique->type_articles ?? '' }}">
+          </div>
+          <div class="form-group">
+            <label>Statut</label>
+            <select class="form-control" name="statut">
+              <option value="1" {{ $boutique->statut ? 'selected' : '' }}>Actif</option>
+              <option value="0" {{ !$boutique->statut ? 'selected' : '' }}>Inactif</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-warning">Modifier</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endforeach
 @endsection
