@@ -104,7 +104,7 @@
               <tbody>
                 @foreach($pointsClients as $point)
                 <tr>
-                  <td><a href="#">{{ $point['client']->boutique->nom ?? $point['client']->nom }}</a></td>
+                  <td><a href="#">{{ optional(optional($point['client'])->boutique)->nom ?? optional($point['client'])->nom ?? 'N/A' }}</a></td>
                   <td>{{ number_format($point['cout_global'], 0, ',', ' ') }}</td>
                   <td>{{ number_format($point['cout_livraison'], 0, ',', ' ') }}</td>
                   <td>{{ number_format($point['cout_reel'], 0, ',', ' ') }}</td>
@@ -112,7 +112,7 @@
                   <td><span class="text-success">{{ $point['nbre_livre'] }}</span></td>
                   <td><span class="text-danger">{{ $point['nbre_non_livre'] }}</span></td>
                   <td>
-                    @if(($point['client']->contact ?? null))
+                    @if((optional($point['client'])->contact ?? null))
                       <form action="{{ route('bilans.send-client-sms', $point['client']) }}" method="POST" class="d-inline">
                         @csrf
                         <input type="hidden" name="date" value="{{ $date }}">

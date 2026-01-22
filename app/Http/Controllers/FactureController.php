@@ -17,13 +17,43 @@ class FactureController extends Controller
     {
         $clients = Utilisateur::clients()->get();
 
+        $stats = [
+            'total' => Facture::query()->count(),
+            'brouillon' => Facture::query()->where('statut', 'Brouillon')->count(),
+            'valide' => Facture::query()->where('statut', 'Validé')->count(),
+            'paye' => Facture::query()->where('statut', 'Payé')->count(),
+            'montant_paye' => (int) Facture::query()->where('statut', 'Payé')->sum('total_ttc'),
+        ];
+
         $factures = Facture::with('client')
             ->orderByDesc('date_facture')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
-        return view('factures.index', compact('clients', 'factures'));
+        return view('factures.index', compact('clients', 'factures', 'stats'));
+    }
+
+    public function payees(Request $request)
+    {
+        $clients = Utilisateur::clients()->get();
+
+        $stats = [
+            'total' => Facture::query()->count(),
+            'brouillon' => Facture::query()->where('statut', 'Brouillon')->count(),
+            'valide' => Facture::query()->where('statut', 'Validé')->count(),
+            'paye' => Facture::query()->where('statut', 'Payé')->count(),
+            'montant_paye' => (int) Facture::query()->where('statut', 'Payé')->sum('total_ttc'),
+        ];
+
+        $factures = Facture::with('client')
+            ->where('statut', 'Payé')
+            ->orderByDesc('date_facture')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('factures.index', compact('clients', 'factures', 'stats'));
     }
 
     private function nextNumeroFacture(Carbon $date): string

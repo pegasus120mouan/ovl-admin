@@ -144,6 +144,7 @@ Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class,
 
 // Factures
 Route::get('factures', [FactureController::class, 'index'])->name('factures.index');
+Route::get('factures/payees', [FactureController::class, 'payees'])->name('factures.payees');
 Route::post('factures', [FactureController::class, 'store'])->name('factures.store');
 Route::get('factures/{facture}', [FactureController::class, 'show'])->name('factures.show');
 Route::patch('factures/{facture}/statut', [FactureController::class, 'updateStatut'])->name('factures.statut.update');
