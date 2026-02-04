@@ -28,6 +28,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Dashboard (protégé)
 Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
+Route::get('/manager', [AuthController::class, 'manager'])->name('manager');
 
 // Commandes
 Route::resource('commandes', CommandeController::class);

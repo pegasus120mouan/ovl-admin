@@ -77,47 +77,26 @@ class AuthController extends Controller
             return redirect()->route('login');
         }
 
-        $totalPaieMontantPaye = (int) PaieLivreur::query()
-            ->where('statut', 'Payé')
-            ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
-        $nbFichesPayees = (int) PaieLivreur::query()->where('statut', 'Payé')->count();
-        $nbFichesAPayer = (int) PaieLivreur::query()->where('statut', '!=', 'Payé')->count();
-        $nbPeriodesPayees = (int) PaiePeriode::query()->where('statut', 'Payé')->count();
-        $nbPeriodesEnCours = (int) PaiePeriode::query()->where('statut', 'En cours')->count();
-
-        $startOfYear = Carbon::now()->startOfYear()->toDateString();
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
         $today = Carbon::now()->toDateString();
 
-        $facturesParStatut = Facture::query()
-            ->whereDate('date_facture', '>=', $startOfYear)
-            ->whereDate('date_facture', '<=', $today)
-            ->selectRaw('statut, COUNT(*) as total')
-            ->groupBy('statut')
-            ->pluck('total', 'statut');
+        $nbColisRecusMois = (int) Commande::query()
+            ->whereBetween('date_reception', [$startOfMonth, $today])
+            ->count();
 
-        $montantFacturesTotal = (int) Facture::query()->sum('total_ttc');
-
-        $montantDettesTotal = (int) Dette::query()->sum('montant_actuel');
-
-        $montantDettesRembourseesTotal = (int) Dette::query()->sum('montants_payes');
-
-        $montantDettesRestantTotal = max(0, (int) $montantDettesTotal - (int) $montantDettesRembourseesTotal);
-
-        $montantFacturesValideesAnnee = (int) Facture::query()
-            ->where('statut', 'Validé')
-            ->whereDate('date_facture', '>=', $startOfYear)
-            ->whereDate('date_facture', '<=', $today)
-            ->sum('total_ttc');
-
-        $nbFacturesBrouillon = (int) ($facturesParStatut['Brouillon'] ?? 0);
-        $nbFacturesValidees = (int) ($facturesParStatut['Validé'] ?? 0);
-        $nbFacturesPayees = (int) ($facturesParStatut['Payé'] ?? 0);
-        $nbFacturesTotal = $nbFacturesBrouillon + $nbFacturesValidees + $nbFacturesPayees;
-
-        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
         $nbColisLivresMois = (int) Commande::query()
             ->where('statut', 'Livré')
             ->whereBetween('date_livraison', [$startOfMonth, $today])
+            ->count();
+
+        $nbColisNonLivresMois = (int) Commande::query()
+            ->where('statut', 'Non Livré')
+            ->whereBetween('date_reception', [$startOfMonth, $today])
+            ->count();
+
+        $nbColisRetoursMois = (int) Commande::query()
+            ->where('statut', 'Retour')
+            ->whereBetween('date_retour', [$startOfMonth, $today])
             ->count();
 
         $montantLivraisonsPayeesMois = (int) Commande::query()
@@ -141,11 +120,137 @@ class AuthController extends Controller
             ->whereDate('date_paiement', '<=', $today)
             ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
 
-        $depensesMois = (int) $depensesLivreursMois
-            + (int) $paieLivreursMois
-            + (int) $montantDettesRestantTotal;
+        $depensesMois = (int) $depensesLivreursMois + (int) $paieLivreursMois;
 
         $gainMois = ((int) $montantLivraisonsPayeesMois + (int) $montantFacturesPayeesMois) - (int) $depensesMois;
+
+        $topGainsLivreursMois = PointsLivreur::query()
+            ->join('utilisateurs as u', 'points_livreurs.utilisateur_id', '=', 'u.id')
+            ->whereBetween('points_livreurs.date_commande', [$startOfMonth, $today])
+            ->selectRaw("CONCAT(COALESCE(u.nom,''), ' ', COALESCE(u.prenoms,'')) as label, SUM(points_livreurs.gain_jour) as total")
+            ->groupBy('u.id', 'u.nom', 'u.prenoms')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $repartitionGainsLivreursMoisLabels = $topGainsLivreursMois->pluck('label')->map(fn ($v) => trim((string) $v) ?: 'N/A')->values()->all();
+        $repartitionGainsLivreursMoisData = $topGainsLivreursMois->pluck('total')->map(fn ($v) => (int) $v)->values()->all();
+
+        $topDepensesLivreursMois = PointsLivreur::query()
+            ->join('utilisateurs as u', 'points_livreurs.utilisateur_id', '=', 'u.id')
+            ->whereBetween('points_livreurs.date_commande', [$startOfMonth, $today])
+            ->selectRaw("CONCAT(COALESCE(u.nom,''), ' ', COALESCE(u.prenoms,'')) as label, SUM(points_livreurs.depense) as total")
+            ->groupBy('u.id', 'u.nom', 'u.prenoms')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $repartitionDepensesLivreursMoisLabels = $topDepensesLivreursMois->pluck('label')->map(fn ($v) => trim((string) $v) ?: 'N/A')->values()->all();
+        $repartitionDepensesLivreursMoisData = $topDepensesLivreursMois->pluck('total')->map(fn ($v) => (int) $v)->values()->all();
+
+        $revenusTotalMois = (int) Commande::where('statut', 'Livré')
+            ->whereBetween('date_livraison', [$startOfMonth, $today])
+            ->sum('cout_global');
+
+        $totalCommandesMois = $nbColisRecusMois;
+
+        $topBoutiquesMois = Commande::query()
+            ->join('utilisateurs as u', 'commandes.utilisateur_id', '=', 'u.id')
+            ->leftJoin('boutiques as b', 'u.boutique_id', '=', 'b.id')
+            ->whereBetween('commandes.date_reception', [$startOfMonth, $today])
+            ->selectRaw("COALESCE(b.nom, 'Sans boutique') as label, COUNT(*) as total")
+            ->groupBy('b.id', 'b.nom')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $repartitionBoutiquesMoisLabels = $topBoutiquesMois->pluck('label')->values()->all();
+        $repartitionBoutiquesMoisData = $topBoutiquesMois->pluck('total')->map(fn ($v) => (int) $v)->values()->all();
+        $autreBoutiquesMois = $totalCommandesMois - array_sum($repartitionBoutiquesMoisData);
+        if ($autreBoutiquesMois > 0) {
+            $repartitionBoutiquesMoisLabels[] = 'Autre';
+            $repartitionBoutiquesMoisData[] = (int) $autreBoutiquesMois;
+        }
+
+        $topClientsMois = Commande::query()
+            ->join('utilisateurs as u', 'commandes.utilisateur_id', '=', 'u.id')
+            ->whereBetween('commandes.date_reception', [$startOfMonth, $today])
+            ->selectRaw("CONCAT(COALESCE(u.nom,''), ' ', COALESCE(u.prenoms,'')) as label, COUNT(*) as total")
+            ->groupBy('u.id', 'u.nom', 'u.prenoms')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $repartitionClientsMoisLabels = $topClientsMois->pluck('label')->map(fn ($v) => trim((string) $v) ?: 'N/A')->values()->all();
+        $repartitionClientsMoisData = $topClientsMois->pluck('total')->map(fn ($v) => (int) $v)->values()->all();
+        $autreClientsMois = $totalCommandesMois - array_sum($repartitionClientsMoisData);
+        if ($autreClientsMois > 0) {
+            $repartitionClientsMoisLabels[] = 'Autre';
+            $repartitionClientsMoisData[] = (int) $autreClientsMois;
+        }
+
+        return view('dashboard', compact(
+            'nbColisRecusMois',
+            'nbColisLivresMois',
+            'nbColisNonLivresMois',
+            'nbColisRetoursMois',
+            'montantLivraisonsPayeesMois',
+            'montantFacturesPayeesMois',
+            'depensesMois',
+            'depensesLivreursMois',
+            'paieLivreursMois',
+            'gainMois',
+            'revenusTotalMois',
+            'repartitionGainsLivreursMoisLabels',
+            'repartitionGainsLivreursMoisData',
+            'repartitionDepensesLivreursMoisLabels',
+            'repartitionDepensesLivreursMoisData',
+            'repartitionBoutiquesMoisLabels',
+            'repartitionBoutiquesMoisData',
+            'repartitionClientsMoisLabels',
+            'repartitionClientsMoisData'
+        ));
+    }
+
+    public function manager()
+    {
+        if (!Session::has('utilisateur')) {
+            return redirect()->route('login');
+        }
+
+        $startOfYear = Carbon::now()->startOfYear()->toDateString();
+        $today = Carbon::now()->toDateString();
+
+        $totalPaieMontantPaye = (int) PaieLivreur::query()
+            ->where('statut', 'Payé')
+            ->sum(DB::raw('COALESCE(montant_paye, net_a_payer)'));
+        $nbFichesPayees = (int) PaieLivreur::query()->where('statut', 'Payé')->count();
+        $nbFichesAPayer = (int) PaieLivreur::query()->where('statut', '!=', 'Payé')->count();
+        $nbPeriodesPayees = (int) PaiePeriode::query()->where('statut', 'Payé')->count();
+        $nbPeriodesEnCours = (int) PaiePeriode::query()->where('statut', 'En cours')->count();
+
+        $facturesParStatut = Facture::query()
+            ->whereDate('date_facture', '>=', $startOfYear)
+            ->whereDate('date_facture', '<=', $today)
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        $montantFacturesTotal = (int) Facture::query()->sum('total_ttc');
+        $montantDettesTotal = (int) Dette::query()->sum('montant_actuel');
+        $montantDettesRembourseesTotal = (int) Dette::query()->sum('montants_payes');
+        $montantDettesRestantTotal = max(0, (int) $montantDettesTotal - (int) $montantDettesRembourseesTotal);
+
+        $montantFacturesValideesAnnee = (int) Facture::query()
+            ->where('statut', 'Validé')
+            ->whereDate('date_facture', '>=', $startOfYear)
+            ->whereDate('date_facture', '<=', $today)
+            ->sum('total_ttc');
+
+        $nbFacturesBrouillon = (int) ($facturesParStatut['Brouillon'] ?? 0);
+        $nbFacturesValidees = (int) ($facturesParStatut['Validé'] ?? 0);
+        $nbFacturesPayees = (int) ($facturesParStatut['Payé'] ?? 0);
+        $nbFacturesTotal = $nbFacturesBrouillon + $nbFacturesValidees + $nbFacturesPayees;
 
         $paiementLivreursAnnee = (int) PaieLivreur::query()
             ->where('statut', 'Payé')
@@ -256,7 +361,37 @@ class AuthController extends Controller
             $repartitionDepensesLivreursData[] = (int) $autreDepensesLivreurs;
         }
 
-        return view('dashboard', compact(
+        $moisLabels = [];
+        $colisRecusParMois = [];
+        $gainsParMois = [];
+        $depensesParMois = [];
+
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month;
+
+        for ($m = 1; $m <= $currentMonth; $m++) {
+            $startMonth = Carbon::create($currentYear, $m, 1)->startOfMonth()->toDateString();
+            $endMonth = Carbon::create($currentYear, $m, 1)->endOfMonth()->toDateString();
+            if ($m == $currentMonth) {
+                $endMonth = $today;
+            }
+
+            $moisLabels[] = Carbon::create($currentYear, $m, 1)->locale('fr')->isoFormat('MMM');
+
+            $colisRecusParMois[] = (int) Commande::query()
+                ->whereBetween('date_reception', [$startMonth, $endMonth])
+                ->count();
+
+            $gainsParMois[] = (int) PointsLivreur::query()
+                ->whereBetween('date_commande', [$startMonth, $endMonth])
+                ->sum('gain_jour');
+
+            $depensesParMois[] = (int) PointsLivreur::query()
+                ->whereBetween('date_commande', [$startMonth, $endMonth])
+                ->sum('depense');
+        }
+
+        return view('manager', compact(
             'nbColisRecusAnnee',
             'nbColisLivresAnnee',
             'nbColisNonLivresAnnee',
@@ -277,11 +412,6 @@ class AuthController extends Controller
             'epargnesAnnee',
             'paiementLivreursAnnee',
             'gainSyntheseAnnee',
-            'nbColisLivresMois',
-            'montantLivraisonsPayeesMois',
-            'montantFacturesPayeesMois',
-            'depensesMois',
-            'gainMois',
             'totalPaieMontantPaye',
             'nbFichesPayees',
             'nbFichesAPayer',
@@ -294,7 +424,11 @@ class AuthController extends Controller
             'repartitionGainsLivreursLabels',
             'repartitionGainsLivreursData',
             'repartitionDepensesLivreursLabels',
-            'repartitionDepensesLivreursData'
+            'repartitionDepensesLivreursData',
+            'moisLabels',
+            'colisRecusParMois',
+            'gainsParMois',
+            'depensesParMois'
         ));
     }
 }
