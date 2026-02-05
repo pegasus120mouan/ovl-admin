@@ -99,6 +99,21 @@
     .auth-input-wrap {
       position: relative;
     }
+    .auth-eye-toggle {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #8b96a5;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 16px;
+    }
+    .auth-eye-toggle:hover {
+      color: #495057;
+    }
     @media (min-width: 992px) {
       .auth-left { display: flex; }
     }
@@ -148,7 +163,10 @@
 
         <div class="auth-input-wrap mb-3">
           <i class="fas fa-lock auth-icon"></i>
-          <input type="password" name="password" class="form-control auth-input @error('password') is-invalid @enderror" placeholder="Mot de passe" required>
+          <input type="password" name="password" id="passwordInput" class="form-control auth-input @error('password') is-invalid @enderror" placeholder="Mot de passe" style="padding-right: 44px;" required>
+          <button type="button" class="auth-eye-toggle" id="togglePassword">
+            <i class="fas fa-eye" id="eyeIcon"></i>
+          </button>
         </div>
 
         <div class="d-flex align-items-center justify-content-between mb-3" style="gap: 12px;">
@@ -179,5 +197,53 @@
 <script src="{{ asset('plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <!-- AdminLTE App -->
 <script src="{{ asset('dist/js/adminlte.min.js') }}"></script>
+
+<script>
+(function() {
+    var toggleBtn = document.getElementById('togglePassword');
+    var passwordInput = document.getElementById('passwordInput');
+    var eyeIcon = document.getElementById('eyeIcon');
+
+    if (toggleBtn && passwordInput && eyeIcon) {
+        toggleBtn.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    }
+
+    var loginInput = document.querySelector('input[name="login"]');
+    var rememberCheckbox = document.getElementById('remember');
+
+    if (localStorage.getItem('ovl_remember') === 'true') {
+        var savedLogin = localStorage.getItem('ovl_login');
+        if (savedLogin && loginInput) {
+            loginInput.value = savedLogin;
+        }
+        if (rememberCheckbox) {
+            rememberCheckbox.checked = true;
+        }
+    }
+
+    var form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            if (rememberCheckbox && rememberCheckbox.checked) {
+                localStorage.setItem('ovl_remember', 'true');
+                localStorage.setItem('ovl_login', loginInput ? loginInput.value : '');
+            } else {
+                localStorage.removeItem('ovl_remember');
+                localStorage.removeItem('ovl_login');
+            }
+        });
+    }
+})();
+</script>
 </body>
 </html>
