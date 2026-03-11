@@ -446,4 +446,52 @@ class CommandeController extends Controller
 
         return $pdf->stream($fileName);
     }
+
+    public function pointsValides()
+    {
+        $perPage = request('per_page', 20);
+
+        // Grouper les commandes validées par date de livraison et boutique
+        $pointsValides = Commande::with(['client.boutique'])
+            ->where('point_valide', true)
+            ->whereNotNull('date_validation_point')
+            ->select('date_livraison', 'utilisateur_id', 'date_validation_point')
+            ->selectRaw('SUM(cout_reel) as montant_total')
+            ->selectRaw('COUNT(*) as nombre_colis')
+            ->selectRaw('MAX(paiement_effectue) as paiement_effectue')
+            ->selectRaw('MAX(operateur_paiement) as operateur_paiement')
+            ->selectRaw('MAX(date_paiement) as date_paiement')
+            ->groupBy('date_livraison', 'utilisateur_id', 'date_validation_point')
+            ->orderByDesc('date_validation_point')
+            ->paginate($perPage);
+
+        // Récupérer les infos des boutiques pour chaque point
+        foreach ($pointsValides as $point) {
+            $utilisateur = Utilisateur::with('boutique')->find($point->utilisateur_id);
+            $point->boutique_nom = $utilisateur->boutique->nom ?? ($utilisateur->nom . ' ' . $utilisateur->prenoms);
+        }
+
+        return view('commandes.points-valides', compact('pointsValides'));
+    }
+
+    public function effectuerPaiement(Request $request)
+    {
+        $request->validate([
+            'date_livraison' => 'required|date',
+            'utilisateur_id' => 'required|integer',
+            'operateur' => 'required|string',
+        ]);
+
+        // Mettre à jour toutes les commandes de cette date et ce client
+        Commande::where('utilisateur_id', $request->utilisateur_id)
+            ->whereDate('date_livraison', $request->date_livraison)
+            ->where('point_valide', true)
+            ->update([
+                'paiement_effectue' => true,
+                'operateur_paiement' => $request->operateur,
+                'date_paiement' => now(),
+            ]);
+
+        return redirect()->route('commandes.points-valides')->with('success', 'Paiement effectué avec succès!');
+    }
 }

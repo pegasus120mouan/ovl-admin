@@ -37,6 +37,8 @@ Route::get('commandes-non-livrees', [CommandeController::class, 'nonLivrees'])->
 Route::get('commandes-print', [CommandeController::class, 'print'])->name('commandes.print');
 Route::patch('commandes/{commande}/marquer-livre', [CommandeController::class, 'marquerLivre'])->name('commandes.marquer-livre');
 Route::patch('commandes/{commande}/marquer-retour', [CommandeController::class, 'marquerRetour'])->name('commandes.marquer-retour');
+Route::get('commandes-points-valides', [CommandeController::class, 'pointsValides'])->name('commandes.points-valides');
+Route::post('commandes-effectuer-paiement', [CommandeController::class, 'effectuerPaiement'])->name('commandes.effectuer-paiement');
 
 // Bilans
 Route::get('bilans', [BilanController::class, 'index'])->name('bilans.index');
