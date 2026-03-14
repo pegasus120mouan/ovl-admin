@@ -6,6 +6,7 @@ use App\Models\Commande;
 use App\Models\CoutLivraison;
 use App\Models\Boutique;
 use App\Models\PointsLivreur;
+use App\Models\Reclamation;
 use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -493,5 +494,69 @@ class CommandeController extends Controller
             ]);
 
         return redirect()->route('commandes.points-valides')->with('success', 'Paiement effectué avec succès!');
+    }
+
+    public function reclamations(Request $request)
+    {
+        $query = Reclamation::with(['commande.livreur', 'client.boutique'])
+            ->orderByDesc('created_at');
+
+        // Filtre par statut - par défaut "en_attente"
+        $statut = $request->input('statut', 'en_attente');
+        if ($statut !== 'toutes') {
+            $query->where('statut', $statut);
+        }
+
+        $reclamations = $query->paginate(20);
+
+        return view('reclamations.index', compact('reclamations', 'statut'));
+    }
+
+    public function traiterReclamation(Request $request, Reclamation $reclamation)
+    {
+        // Mettre à jour la commande avec les nouvelles valeurs
+        $updateData = [];
+        
+        if ($request->filled('communes')) {
+            $updateData['communes'] = $request->communes;
+        }
+        
+        if ($request->filled('cout_global')) {
+            $updateData['cout_global'] = $request->cout_global;
+        }
+        
+        if ($request->filled('cout_livraison')) {
+            $updateData['cout_livraison'] = $request->cout_livraison;
+        }
+        
+        if ($request->filled('cout_reel')) {
+            $updateData['cout_reel'] = $request->cout_reel;
+        }
+        
+        if (!empty($updateData)) {
+            $reclamation->commande->update($updateData);
+        }
+
+        // Vérifier si le nouveau cout_reel correspond au montant réclamé par le client
+        $nouveauCoutReel = $request->cout_reel ?? $reclamation->commande->cout_reel;
+        $montantReclame = $reclamation->montant_reclame;
+
+        if ($nouveauCoutReel == $montantReclame) {
+            // Le montant correspond à ce que le client a réclamé -> acceptée
+            $reclamation->update([
+                'statut' => 'acceptee',
+                'date_traitement' => now(),
+            ]);
+            $message = 'Réclamation acceptée - Le montant correspond à la demande du client.';
+        } else {
+            // Le montant ne correspond pas -> refusée
+            $reclamation->update([
+                'statut' => 'refusee',
+                'date_traitement' => now(),
+            ]);
+            $message = 'Réclamation refusée - Le montant ne correspond pas à la demande du client.';
+        }
+
+        return redirect()->route('reclamations.index')->with('success', $message);
     }
 }

@@ -40,6 +40,10 @@ Route::patch('commandes/{commande}/marquer-retour', [CommandeController::class, 
 Route::get('commandes-points-valides', [CommandeController::class, 'pointsValides'])->name('commandes.points-valides');
 Route::post('commandes-effectuer-paiement', [CommandeController::class, 'effectuerPaiement'])->name('commandes.effectuer-paiement');
 
+// Réclamations
+Route::get('reclamations', [CommandeController::class, 'reclamations'])->name('reclamations.index');
+Route::patch('reclamations/{reclamation}/traiter', [CommandeController::class, 'traiterReclamation'])->name('reclamations.traiter');
+
 // Bilans
 Route::get('bilans', [BilanController::class, 'index'])->name('bilans.index');
 Route::get('bilans/hier', [BilanController::class, 'hier'])->name('bilans.hier');

@@ -351,7 +351,17 @@
           <li class="nav-item">
             <a href="{{ route('commandes.points-valides') }}" class="nav-link">
               <i class="nav-icon fas fa-check-double text-success"></i>
-              <p>Points validés clients</p>
+              <p>Points validés clients
+                <span class="badge badge-danger ml-1">{{ $pointsValidesNonPayes ?? 0 }}</span>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ route('reclamations.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-exclamation-triangle text-danger"></i>
+              <p>Réclamations
+                <span class="badge badge-danger ml-1">{{ $reclamationsEnAttente ?? 0 }}</span>
+              </p>
             </a>
           </li>
           <li class="nav-item">
