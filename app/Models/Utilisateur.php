@@ -20,6 +20,7 @@ class Utilisateur extends Model
         'avatar',
         'password',
         'code_pin',
+        'api_token',
         'role',
         'boutique_id',
         'statut_compte',
@@ -29,6 +30,7 @@ class Utilisateur extends Model
     protected $hidden = [
         'password',
         'code_pin',
+        'api_token',
     ];
 
     protected $casts = [
