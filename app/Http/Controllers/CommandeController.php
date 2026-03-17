@@ -496,6 +496,36 @@ class CommandeController extends Controller
         return redirect()->route('commandes.points-valides')->with('success', 'Paiement effectué avec succès!');
     }
 
+    public function supprimerPointValide(Request $request)
+    {
+        $request->validate([
+            'date_livraison' => 'required|date',
+            'utilisateur_id' => 'required|integer',
+        ]);
+
+        // Vérifier que le point n'est pas encore payé
+        $pointsPaies = Commande::where('utilisateur_id', $request->utilisateur_id)
+            ->whereDate('date_livraison', $request->date_livraison)
+            ->where('point_valide', true)
+            ->where('paiement_effectue', true)
+            ->exists();
+
+        if ($pointsPaies) {
+            return redirect()->route('commandes.points-valides')->with('error', 'Impossible de supprimer un point déjà payé!');
+        }
+
+        // Annuler la validation du point (remettre point_valide à false)
+        Commande::where('utilisateur_id', $request->utilisateur_id)
+            ->whereDate('date_livraison', $request->date_livraison)
+            ->where('point_valide', true)
+            ->update([
+                'point_valide' => false,
+                'date_validation_point' => null,
+            ]);
+
+        return redirect()->route('commandes.points-valides')->with('success', 'Point validé supprimé avec succès!');
+    }
+
     public function reclamations(Request $request)
     {
         $query = Reclamation::with(['commande.livreur', 'client.boutique'])
@@ -558,5 +588,11 @@ class CommandeController extends Controller
         }
 
         return redirect()->route('reclamations.index')->with('success', $message);
+    }
+
+    public function supprimerReclamation(Reclamation $reclamation)
+    {
+        $reclamation->delete();
+        return redirect()->route('reclamations.index')->with('success', 'Réclamation supprimée avec succès!');
     }
 }

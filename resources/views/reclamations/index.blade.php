@@ -64,6 +64,7 @@
                                 <th>Montant réclamé</th>
                                 <th>Statut</th>
                                 <th>Actions</th>
+                                <th class="text-center">Suppression</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,6 +121,11 @@
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#supprimerModal{{ $reclamation->id }}" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
 
@@ -232,6 +238,52 @@
                                     </div>
                                 </div>
                                 @endif
+
+                                <!-- Modal Supprimer -->
+                                <div class="modal fade" id="supprimerModal{{ $reclamation->id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger">
+                                                <h5 class="modal-title text-white"><i class="fas fa-exclamation-triangle mr-2"></i>Confirmer la suppression</h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                                            </div>
+                                            <form action="{{ route('reclamations.supprimer', $reclamation->id) }}" method="POST">
+                                                @csrf
+                                                @method('DELETE')
+                                                <div class="modal-body">
+                                                    <div class="text-center mb-3">
+                                                        <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                                                        <p>Êtes-vous sûr de vouloir supprimer cette réclamation ?</p>
+                                                    </div>
+                                                    <div class="p-3 bg-light rounded">
+                                                        <p class="mb-1"><strong>Client:</strong> 
+                                                            @if($reclamation->client && $reclamation->client->boutique)
+                                                                {{ $reclamation->client->boutique->nom }}
+                                                            @elseif($reclamation->client)
+                                                                {{ $reclamation->client->nom }} {{ $reclamation->client->prenoms }}
+                                                            @endif
+                                                        </p>
+                                                        <p class="mb-1"><strong>Type:</strong> {{ $reclamation->type_label }}</p>
+                                                        <p class="mb-1"><strong>Montant actuel:</strong> {{ number_format($reclamation->montant_actuel ?? 0, 0, ',', ' ') }} XOF</p>
+                                                        @if($reclamation->montant_reclame)
+                                                            <p class="mb-0"><strong>Montant réclamé:</strong> {{ number_format($reclamation->montant_reclame, 0, ',', ' ') }} XOF</p>
+                                                        @endif
+                                                    </div>
+                                                    <div class="alert alert-warning mt-3 mb-0">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        Cette action est irréversible.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-trash mr-1"></i>Supprimer
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             @endforeach
                         </tbody>
                     </table>

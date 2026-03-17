@@ -39,10 +39,12 @@ Route::patch('commandes/{commande}/marquer-livre', [CommandeController::class, '
 Route::patch('commandes/{commande}/marquer-retour', [CommandeController::class, 'marquerRetour'])->name('commandes.marquer-retour');
 Route::get('commandes-points-valides', [CommandeController::class, 'pointsValides'])->name('commandes.points-valides');
 Route::post('commandes-effectuer-paiement', [CommandeController::class, 'effectuerPaiement'])->name('commandes.effectuer-paiement');
+Route::delete('commandes-supprimer-point-valide', [CommandeController::class, 'supprimerPointValide'])->name('commandes.supprimer-point-valide');
 
 // Réclamations
 Route::get('reclamations', [CommandeController::class, 'reclamations'])->name('reclamations.index');
 Route::patch('reclamations/{reclamation}/traiter', [CommandeController::class, 'traiterReclamation'])->name('reclamations.traiter');
+Route::delete('reclamations/{reclamation}/supprimer', [CommandeController::class, 'supprimerReclamation'])->name('reclamations.supprimer');
 
 // Bilans
 Route::get('bilans', [BilanController::class, 'index'])->name('bilans.index');

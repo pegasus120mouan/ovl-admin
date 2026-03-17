@@ -15,14 +15,15 @@
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Date de livraison</th>
-                                <th>Boutique</th>
-                                <th>Nombre de colis</th>
-                                <th class="text-right">Montant</th>
-                                <th class="text-center">Statut validation</th>
-                                <th class="text-center">Statut paiement</th>
-                                <th>Date de validation</th>
-                                <th>Actions</th>
+                                <th style="width: 110px;">Date livraison</th>
+                                <th style="width: 120px;">Boutique</th>
+                                <th style="width: 90px;" class="text-center">Colis</th>
+                                <th style="width: 110px;" class="text-right">Montant</th>
+                                <th style="width: 130px;" class="text-center">Validation</th>
+                                <th style="width: 140px;" class="text-center">Paiement</th>
+                                <th style="width: 130px;">Date validation</th>
+                                <th style="width: 140px;" class="text-center">Actions</th>
+                                <th style="width: 80px;" class="text-center">Suppression</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -34,48 +35,59 @@
                                 <td>
                                     <span class="badge badge-info p-2">{{ $point->boutique_nom }}</span>
                                 </td>
-                                <td>{{ $point->nombre_colis }} colis</td>
+                                <td class="text-center">{{ $point->nombre_colis }}</td>
                                 <td class="text-right">
                                     <strong class="text-success">{{ number_format($point->montant_total, 0, ',', ' ') }} XOF</strong>
                                 </td>
                                 <td class="text-center">
                                     <span class="badge badge-success p-2">
-                                        <i class="fas fa-check mr-1"></i>Validé par le client
+                                        <i class="fas fa-check mr-1"></i>Validé
                                     </span>
                                 </td>
                                 <td class="text-center">
                                     @if($point->paiement_effectue)
                                         <span class="badge badge-success p-2">
-                                            <i class="fas fa-money-bill-wave mr-1"></i>Paiement effectué
+                                            <i class="fas fa-check mr-1"></i>Payé
                                         </span>
                                         @if($point->operateur_paiement)
                                             <br><small class="text-muted">{{ $point->operateur_paiement }}</small>
                                         @endif
                                     @else
                                         <span class="badge badge-warning p-2">
-                                            <i class="fas fa-clock mr-1"></i>Paiement non effectué
+                                            <i class="fas fa-clock mr-1"></i>En attente
                                         </span>
                                     @endif
                                 </td>
                                 <td>
                                     <small class="text-muted">
                                         <i class="fas fa-clock mr-1"></i>
-                                        {{ $point->date_validation_point ? \Carbon\Carbon::parse($point->date_validation_point)->format('d-m-Y à H:i') : 'N/A' }}
+                                        {{ $point->date_validation_point ? \Carbon\Carbon::parse($point->date_validation_point)->format('d-m-Y H:i') : 'N/A' }}
                                     </small>
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     @if(!$point->paiement_effectue)
-                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalPaiement{{ $loop->index }}">
-                                            <i class="fas fa-credit-card mr-1"></i>Effectuer le paiement
+                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalPaiement{{ $loop->index }}" title="Effectuer le paiement">
+                                            <i class="fas fa-credit-card"></i>
                                         </button>
                                     @else
                                         <span class="text-success"><i class="fas fa-check-circle"></i> Payé</span>
                                     @endif
                                 </td>
+                                <td class="text-center">
+                                    @if(!$point->paiement_effectue)
+                                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#modalSupprimer{{ $loop->index }}" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-secondary" disabled title="Impossible de supprimer un point déjà payé">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    @endif
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="text-center py-4">
+                                <td colspan="9" class="text-center py-4">
                                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">Aucun point validé pour le moment</p>
                                 </td>
@@ -138,6 +150,47 @@
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-check mr-1"></i>Valider le paiement
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSupprimer{{ $loop->index }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title text-white"><i class="fas fa-exclamation-triangle mr-2"></i>Confirmer la suppression</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form action="{{ route('commandes.supprimer-point-valide') }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                        <p>Êtes-vous sûr de vouloir supprimer ce point validé ?</p>
+                    </div>
+                    <div class="p-3 bg-light rounded">
+                        <p class="mb-1"><strong>Boutique:</strong> {{ $point->boutique_nom }}</p>
+                        <p class="mb-1"><strong>Date de livraison:</strong> {{ $point->date_livraison ? \Carbon\Carbon::parse($point->date_livraison)->format('d-m-Y') : 'N/A' }}</p>
+                        <p class="mb-1"><strong>Nombre de colis:</strong> {{ $point->nombre_colis }} colis</p>
+                        <p class="mb-0"><strong>Montant:</strong> <span class="text-success font-weight-bold">{{ number_format($point->montant_total, 0, ',', ' ') }} XOF</span></p>
+                    </div>
+                    <input type="hidden" name="date_livraison" value="{{ $point->date_livraison }}">
+                    <input type="hidden" name="utilisateur_id" value="{{ $point->utilisateur_id }}">
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Cette action annulera la validation du point. Les commandes concernées devront être revalidées par le client.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash mr-1"></i>Supprimer
                     </button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
                 </div>
