@@ -49,6 +49,7 @@ Route::delete('reclamations/{reclamation}/supprimer', [CommandeController::class
 // Bilans
 Route::get('bilans', [BilanController::class, 'index'])->name('bilans.index');
 Route::get('bilans/hier', [BilanController::class, 'hier'])->name('bilans.hier');
+Route::get('bilans/{client}/colis', [BilanController::class, 'getClientPackages'])->name('bilans.client-packages');
 Route::post('bilans/{client}/envoyer-sms', [BilanController::class, 'sendClientReportSms'])->name('bilans.send-client-sms');
 
 // Points Livreurs

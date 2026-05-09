@@ -137,6 +137,65 @@ class BilanController extends Controller
         ));
     }
 
+    public function getClientPackages(Request $request, Utilisateur $client)
+    {
+        try {
+            if (($client->role ?? null) !== 'clients') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Client non valide'
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'date' => 'required|date',
+            ]);
+
+            $date = $validated['date'];
+
+            $commandes = Commande::with(['livreur'])
+                ->where('utilisateur_id', $client->id)
+                ->where('statut', 'Livré')
+                ->whereDate('date_livraison', $date)
+                ->orderBy('id', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'client' => [
+                    'nom' => optional($client->boutique)->nom ?? $client->nom,
+                    'contact' => $client->contact,
+                ],
+                'commandes' => $commandes->map(function($commande) {
+                    return [
+                        'id' => $commande->id,
+                        'destinataire' => $commande->nom_destinataire ?? '',
+                        'contact' => $commande->contact_destinataire ?? '',
+                        'commune' => $commande->commune ?? $commande->communes ?? '',
+                        'statut' => $commande->statut,
+                        'cout_global' => $commande->cout_global,
+                        'cout_livraison' => $commande->cout_livraison,
+                        'cout_reel' => $commande->cout_reel,
+                        'livreur' => trim((optional($commande->livreur)->nom ?? '') . ' ' . (optional($commande->livreur)->prenoms ?? '')),
+                        'date_reception' => $commande->date_reception,
+                        'date_livraison' => $commande->date_livraison,
+                    ];
+                }),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur getClientPackages', [
+                'client_id' => $client->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des colis: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function sendClientReportSms(Request $request, Utilisateur $client)
     {
         if (($client->role ?? null) !== 'clients') {
