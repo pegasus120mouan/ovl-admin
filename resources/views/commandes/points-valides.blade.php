@@ -97,15 +97,65 @@
                     </table>
                 </div>
                 @if($pointsValides->hasPages())
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="text-muted small">
-                            Affichage de {{ $pointsValides->firstItem() ?? 0 }} à {{ $pointsValides->lastItem() ?? 0 }} sur {{ $pointsValides->total() }} entrées
-                        </div>
-                        <div>
-                            {{ $pointsValides->links() }}
-                        </div>
+                <div class="card-footer clearfix">
+                    <div class="float-left text-muted" style="line-height: 38px;">
+                        Affichage de <strong>{{ $pointsValides->firstItem() ?? 0 }}</strong> à <strong>{{ $pointsValides->lastItem() ?? 0 }}</strong> sur <strong>{{ $pointsValides->total() }}</strong> entrées
                     </div>
+                    <ul class="pagination pagination-sm m-0 float-right">
+                        {{-- Bouton Précédent --}}
+                        @if($pointsValides->onFirstPage())
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                            </li>
+                        @else
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $pointsValides->previousPageUrl() }}"><i class="fas fa-chevron-left"></i></a>
+                            </li>
+                        @endif
+
+                        {{-- Numéros de pages --}}
+                        @php
+                            $currentPage = $pointsValides->currentPage();
+                            $lastPage = $pointsValides->lastPage();
+                            $start = max(1, $currentPage - 2);
+                            $end = min($lastPage, $currentPage + 2);
+                        @endphp
+
+                        @if($start > 1)
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $pointsValides->url(1) }}">1</a>
+                            </li>
+                            @if($start > 2)
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            @endif
+                        @endif
+
+                        @for($i = $start; $i <= $end; $i++)
+                            <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                                <a class="page-link" href="{{ $pointsValides->url($i) }}">{{ $i }}</a>
+                            </li>
+                        @endfor
+
+                        @if($end < $lastPage)
+                            @if($end < $lastPage - 1)
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            @endif
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $pointsValides->url($lastPage) }}">{{ $lastPage }}</a>
+                            </li>
+                        @endif
+
+                        {{-- Bouton Suivant --}}
+                        @if($pointsValides->hasMorePages())
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $pointsValides->nextPageUrl() }}"><i class="fas fa-chevron-right"></i></a>
+                            </li>
+                        @else
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                            </li>
+                        @endif
+                    </ul>
                 </div>
                 @endif
             </div>
