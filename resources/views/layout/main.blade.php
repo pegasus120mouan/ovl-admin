@@ -221,7 +221,7 @@
             }
 
             try {
-              $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+              $disk = \Illuminate\Support\Facades\Storage::disk('r2');
               try {
                 $sidebarAvatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
               } catch (\Exception $e) {

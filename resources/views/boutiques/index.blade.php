@@ -101,7 +101,7 @@
                 <td style="width: 70px;">
                   @php
                     $logoKey = $boutique->logo ?: 'boutiques/default_boutiques.png';
-                    $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                    $disk = \Illuminate\Support\Facades\Storage::disk('r2');
                     try {
                       $logoUrl = $disk->temporaryUrl($logoKey, now()->addMinutes(30));
                     } catch (\Exception $e) {

@@ -368,7 +368,7 @@ class UtilisateurController extends Controller
             $avatarKey = 'administrateurs/' . $avatarKey;
         }
 
-        $disk = Storage::disk('s3');
+        $disk = Storage::disk('r2');
         try {
             $avatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
         } catch (\Exception $e) {
@@ -425,7 +425,7 @@ class UtilisateurController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('administrateurs', 's3');
+            $data['avatar'] = $request->file('avatar')->store('administrateurs', 'r2');
         }
 
         if (!empty($data)) {
@@ -491,7 +491,7 @@ class UtilisateurController extends Controller
             $avatarKey = 'livreurs/' . $avatarKey;
         }
 
-        $disk = Storage::disk('s3');
+        $disk = Storage::disk('r2');
         try {
             $avatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
         } catch (\Exception $e) {
@@ -552,7 +552,7 @@ class UtilisateurController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('livreurs', 's3');
+            $data['avatar'] = $request->file('avatar')->store('livreurs', 'r2');
         }
 
         if (!empty($data)) {

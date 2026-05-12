@@ -144,7 +144,7 @@ class EnginController extends Controller
             $stored = false;
             $storedKey = null;
             try {
-                $disk = Storage::disk('s3');
+                $disk = Storage::disk('r2');
                 $disk->putFileAs('engins', $file, $filename);
                 $stored = true;
                 $storedKey = 'engins/' . $filename;

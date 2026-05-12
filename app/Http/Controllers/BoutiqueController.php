@@ -70,7 +70,7 @@ class BoutiqueController extends Controller
         ];
 
         if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('boutiques', 's3');
+            $data['logo'] = $request->file('logo')->store('boutiques', 'r2');
         } else {
             $data['logo'] = 'boutiques/default_boutiques.png';
         }
@@ -100,7 +100,7 @@ class BoutiqueController extends Controller
             ->get();
 
         $logoKey = $boutique->logo ?: 'boutiques/default_boutiques.png';
-        $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
 
         try {
             $logoUrl = $disk->temporaryUrl($logoKey, now()->addMinutes(30));
@@ -161,7 +161,7 @@ class BoutiqueController extends Controller
         }
 
         if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('boutiques', 's3');
+            $data['logo'] = $request->file('logo')->store('boutiques', 'r2');
         }
 
         if (!empty($data)) {

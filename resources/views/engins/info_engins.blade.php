@@ -11,7 +11,7 @@
 
   $disk = null;
   try {
-    $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+    $disk = \Illuminate\Support\Facades\Storage::disk('r2');
   } catch (\Throwable $e) {
     $disk = null;
   }

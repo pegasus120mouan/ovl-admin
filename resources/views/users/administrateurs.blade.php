@@ -96,7 +96,7 @@
                       } elseif (!str_contains($avatarKey, '/')) {
                         $avatarKey = 'administrateurs/' . $avatarKey;
                       }
-                      $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                      $disk = \Illuminate\Support\Facades\Storage::disk('r2');
 
                       try {
                         $avatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));

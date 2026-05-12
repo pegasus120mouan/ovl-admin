@@ -53,7 +53,7 @@ class ClientController extends Controller
             $avatarKey = 'utilisateurs/' . $avatarKey;
         }
 
-        $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
         try {
             $avatarUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
         } catch (\Exception $e) {
@@ -138,7 +138,7 @@ class ClientController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('utilisateurs', 's3');
+            $data['avatar'] = $request->file('avatar')->store('utilisateurs', 'r2');
         }
 
         if (!empty($data)) {

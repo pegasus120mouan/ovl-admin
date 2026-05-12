@@ -94,7 +94,7 @@
                     $defaultLivreurAvatarUrl = $localFallbackAvatarUrl;
 
                     try {
-                      $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                      $disk = \Illuminate\Support\Facades\Storage::disk('r2');
                       try {
                         $defaultLivreurAvatarUrl = $disk->temporaryUrl($defaultPhotoKey, now()->addMinutes(30));
                       } catch (\Exception $e) {
@@ -115,7 +115,7 @@
 
                     if ($photoKey) {
                       try {
-                        $disk = \Illuminate\Support\Facades\Storage::disk('s3');
+                        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
                         try {
                           $livreurPhotoUrl = $disk->temporaryUrl($photoKey, now()->addMinutes(30));
                         } catch (\Exception $e) {
