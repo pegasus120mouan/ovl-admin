@@ -438,6 +438,12 @@
                 </a>
               </li>
               <li class="nav-item">
+                <a href="{{route('gestionnaires.index')}}" class="nav-link">
+                  <i class="fas fa-user-tie nav-icon"></i>
+                  <p>Gestionnaires de commandes</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a href="{{route('users.gestion-statuts')}}" class="nav-link">
                   <i class="fas fa-lock nav-icon"></i>
                   <p>Gestion des statuts</p>

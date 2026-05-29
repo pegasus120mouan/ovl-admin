@@ -19,6 +19,7 @@ use App\Http\Controllers\ContratController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\PaieController;
 use App\Http\Controllers\DettesInternesController;
+use App\Http\Controllers\GestionnaireController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -185,3 +186,13 @@ Route::patch('paies/ajustements/{ajustement}/refuser', [PaieController::class, '
 Route::get('paies/{periode}', [PaieController::class, 'showPeriode'])->name('paies.periodes.show');
 Route::post('paies/{periode}/generer-fiches', [PaieController::class, 'genererFiches'])->name('paies.periodes.generer-fiches');
 Route::delete('paies/{periode}', [PaieController::class, 'destroyPeriode'])->name('paies.periodes.destroy');
+
+// Gestionnaires de commandes
+Route::get('gestionnaires', [GestionnaireController::class, 'index'])->name('gestionnaires.index');
+Route::get('gestionnaires/create', [GestionnaireController::class, 'create'])->name('gestionnaires.create');
+Route::post('gestionnaires', [GestionnaireController::class, 'store'])->name('gestionnaires.store');
+Route::get('gestionnaires/{gestionnaire}', [GestionnaireController::class, 'show'])->name('gestionnaires.show');
+Route::put('gestionnaires/{gestionnaire}', [GestionnaireController::class, 'update'])->name('gestionnaires.update');
+Route::delete('gestionnaires/{gestionnaire}', [GestionnaireController::class, 'destroy'])->name('gestionnaires.destroy');
+Route::patch('gestionnaires/{gestionnaire}/toggle-status', [GestionnaireController::class, 'toggleStatus'])->name('gestionnaires.toggle-status');
+Route::post('gestionnaires/{gestionnaire}/regenerate-pin', [GestionnaireController::class, 'regeneratePin'])->name('gestionnaires.regenerate-pin');

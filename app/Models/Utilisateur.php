@@ -82,6 +82,11 @@ class Utilisateur extends Model
         return $query->where('role', 'admin');
     }
 
+    public function scopeGestionnaires($query)
+    {
+        return $query->where('role', 'gestionnaire');
+    }
+
     public function scopeActifs($query)
     {
         return $query->where('statut_compte', 1);
