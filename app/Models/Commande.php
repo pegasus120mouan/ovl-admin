@@ -14,6 +14,7 @@ class Commande extends Model
     protected $fillable = [
         'utilisateur_id',
         'livreur_id',
+        'gestionnaire_id',
         'communes',
         'cout_global',
         'cout_livraison',
@@ -42,6 +43,11 @@ class Commande extends Model
     public function livreur(): BelongsTo
     {
         return $this->belongsTo(Utilisateur::class, 'livreur_id');
+    }
+
+    public function gestionnaire(): BelongsTo
+    {
+        return $this->belongsTo(Utilisateur::class, 'gestionnaire_id');
     }
 
     public function scopeLivre($query)
