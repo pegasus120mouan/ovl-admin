@@ -59,11 +59,14 @@
                       <td>{{ $commande->date_livraison ? $commande->date_livraison->format('d-m-Y') : 'N/A' }}</td>
                       <td>
                         <a href="#" class="btn btn-sm btn-info" data-toggle="modal" data-target="#modalDetailsCommande{{ $commande->id }}"><i class="fas fa-eye"></i></a>
-                        <form action="{{ route('commandes.destroy', $commande) }}" method="POST" style="display:inline;">
-                          @csrf
-                          @method('DELETE')
-                          <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr?')"><i class="fas fa-trash"></i></button>
-                        </form>
+                        <button type="button" class="btn btn-sm btn-danger btn-delete-commande" 
+                                data-toggle="modal" 
+                                data-target="#modalConfirmDeleteCommande"
+                                data-action="{{ route('commandes.destroy', $commande) }}"
+                                data-commande-id="{{ $commande->id }}"
+                                data-commande-commune="{{ $commande->communes }}">
+                          <i class="fas fa-trash"></i>
+                        </button>
                       </td>
                     </tr>
                     @empty
@@ -244,4 +247,65 @@
 </div>
 @endforeach
 
+<!-- Modal Confirmation Suppression Commande -->
+<div class="modal fade" id="modalConfirmDeleteCommande" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle mr-2"></i>Confirmation de suppression
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <div class="mb-3">
+          <span class="fa-stack fa-2x">
+            <i class="fas fa-circle fa-stack-2x text-danger"></i>
+            <i class="fas fa-trash fa-stack-1x fa-inverse"></i>
+          </span>
+        </div>
+        <h5 class="mb-2">Êtes-vous sûr de vouloir supprimer cette commande ?</h5>
+        <p class="text-muted mb-0">
+          Commande <strong id="deleteCommandeId"></strong> - <span id="deleteCommandeCommune"></span>
+        </p>
+        <div class="alert alert-warning mt-3 mb-0 text-left">
+          <i class="fas fa-info-circle mr-1"></i>
+          <small>Cette action est irréversible. Toutes les données associées seront définitivement supprimées.</small>
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">
+          <i class="fas fa-times mr-1"></i>Annuler
+        </button>
+        <form id="deleteCommandeForm" method="POST" action="#" class="d-inline">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="fas fa-trash mr-1"></i>Supprimer
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+$(function() {
+  $('#modalConfirmDeleteCommande').on('show.bs.modal', function(event) {
+    var button = $(event.relatedTarget);
+    var action = button.attr('data-action');
+    var commandeId = button.attr('data-commande-id');
+    var commune = button.attr('data-commande-commune');
+    
+    $('#deleteCommandeForm').attr('action', action);
+    $('#deleteCommandeId').text('#' + commandeId);
+    $('#deleteCommandeCommune').text(commune || 'N/A');
+  });
+});
+</script>
+@endpush

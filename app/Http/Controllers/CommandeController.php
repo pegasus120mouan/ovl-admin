@@ -91,11 +91,20 @@ class CommandeController extends Controller
         
         $commandes = $query->orderBy('date_reception', 'desc')->paginate($perPage)->withQueryString();
 
+        // Optimisation: une seule requête pour les stats
+        $statsRaw = Commande::selectRaw("
+            SUM(CASE WHEN date_reception BETWEEN ? AND ? THEN 1 ELSE 0 END) as recus,
+            SUM(CASE WHEN statut = 'Livré' AND date_livraison BETWEEN ? AND ? THEN 1 ELSE 0 END) as livrees,
+            SUM(CASE WHEN statut = 'Non Livré' AND date_reception BETWEEN ? AND ? THEN 1 ELSE 0 END) as non_livrees,
+            SUM(CASE WHEN statut = 'Retour' AND date_retour BETWEEN ? AND ? THEN 1 ELSE 0 END) as retours
+        ", [$startOfMonth, $endOfMonth, $startOfMonth, $endOfMonth, $startOfMonth, $endOfMonth, $startOfMonth, $endOfMonth])
+        ->first();
+
         $statsMois = [
-            'recus' => Commande::whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
-            'livrees' => Commande::where('statut', 'Livré')->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])->count(),
-            'non_livrees' => Commande::where('statut', 'Non Livré')->whereBetween('date_reception', [$startOfMonth, $endOfMonth])->count(),
-            'retours' => Commande::where('statut', 'Retour')->whereBetween('date_retour', [$startOfMonth, $endOfMonth])->count(),
+            'recus' => (int) ($statsRaw->recus ?? 0),
+            'livrees' => (int) ($statsRaw->livrees ?? 0),
+            'non_livrees' => (int) ($statsRaw->non_livrees ?? 0),
+            'retours' => (int) ($statsRaw->retours ?? 0),
         ];
 
         $coutsLivraison = CoutLivraison::all();
