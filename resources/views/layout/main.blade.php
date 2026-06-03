@@ -346,6 +346,12 @@
                   <p>Commandes non livrées</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="{{ route('commandes.attribution') }}" class="nav-link">
+                  <i class="fas fa-user-plus nav-icon text-info"></i>
+                  <p>Attribution commandes</p>
+                </a>
+              </li>
             </ul>
           </li>
           <li class="nav-item">

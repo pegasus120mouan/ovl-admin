@@ -604,4 +604,72 @@ class CommandeController extends Controller
         $reclamation->delete();
         return redirect()->route('reclamations.index')->with('success', 'Réclamation supprimée avec succès!');
     }
+
+    public function attribution()
+    {
+        $perPage = request('per_page', 20);
+
+        $query = Commande::with(['client.boutique', 'livreur']);
+
+        // Filtres
+        if (request('statut')) {
+            $query->where('statut', request('statut'));
+        } else {
+            // Par défaut, afficher les commandes non livrées
+            $query->where('statut', 'Non Livré');
+        }
+
+        if (request('boutique_id')) {
+            $query->whereHas('client.boutique', function($q) {
+                $q->where('id', request('boutique_id'));
+            });
+        }
+
+        if (request('livreur_id')) {
+            if (request('livreur_id') === 'non_attribue') {
+                $query->whereNull('livreur_id');
+            } else {
+                $query->where('livreur_id', request('livreur_id'));
+            }
+        }
+
+        if (request('date_reception')) {
+            $query->whereDate('date_reception', request('date_reception'));
+        }
+
+        $commandes = $query->orderBy('date_reception', 'desc')->paginate($perPage)->withQueryString();
+
+        $livreurs = Utilisateur::livreurs()->actifs()->orderBy('nom')->get();
+        $boutiques = Boutique::where('statut', 1)->orderBy('nom')->get();
+
+        return view('commandes.attribution', compact('commandes', 'livreurs', 'boutiques'));
+    }
+
+    public function attribuerMasse(Request $request)
+    {
+        $validated = $request->validate([
+            'commande_ids' => 'required|array|min:1',
+            'commande_ids.*' => 'exists:commandes,id',
+            'livreur_id' => 'required|exists:utilisateurs,id',
+        ]);
+
+        $count = Commande::whereIn('id', $validated['commande_ids'])
+            ->update(['livreur_id' => $validated['livreur_id']]);
+
+        return redirect()->route('commandes.attribution')
+            ->with('success', "{$count} commande(s) attribuée(s) avec succès.");
+    }
+
+    public function supprimerMasse(Request $request)
+    {
+        $validated = $request->validate([
+            'commande_ids' => 'required|array|min:1',
+            'commande_ids.*' => 'exists:commandes,id',
+        ]);
+
+        $count = Commande::whereIn('id', $validated['commande_ids'])->delete();
+
+        return redirect()->route('commandes.attribution')
+            ->with('success', "{$count} commande(s) supprimée(s) avec succès.");
+    }
 }
