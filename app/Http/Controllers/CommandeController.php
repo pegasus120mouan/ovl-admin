@@ -612,11 +612,8 @@ class CommandeController extends Controller
         $query = Commande::with(['client.boutique', 'livreur']);
 
         // Filtres
-        if (request('statut')) {
+        if (request('statut') && request('statut') !== 'tous') {
             $query->where('statut', request('statut'));
-        } else {
-            // Par défaut, afficher les commandes non livrées
-            $query->where('statut', 'Non Livré');
         }
 
         if (request('boutique_id')) {
@@ -671,5 +668,32 @@ class CommandeController extends Controller
 
         return redirect()->route('commandes.attribution')
             ->with('success', "{$count} commande(s) supprimée(s) avec succès.");
+    }
+
+    public function changerStatutMasse(Request $request)
+    {
+        $validated = $request->validate([
+            'commande_ids' => 'required|array|min:1',
+            'commande_ids.*' => 'exists:commandes,id',
+            'statut' => 'required|in:Non Livré,Livré,Retour',
+        ]);
+
+        $updateData = ['statut' => $validated['statut']];
+
+        // Si le statut est "Livré", mettre à jour la date de livraison
+        if ($validated['statut'] === 'Livré') {
+            $updateData['date_livraison'] = now();
+        }
+
+        // Si le statut est "Retour", mettre à jour la date de retour
+        if ($validated['statut'] === 'Retour') {
+            $updateData['date_retour'] = now();
+        }
+
+        $count = Commande::whereIn('id', $validated['commande_ids'])
+            ->update($updateData);
+
+        return redirect()->route('commandes.attribution')
+            ->with('success', "{$count} commande(s) mise(s) à jour avec le statut '{$validated['statut']}'.");
     }
 }

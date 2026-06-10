@@ -20,6 +20,7 @@ use App\Http\Controllers\FactureController;
 use App\Http\Controllers\PaieController;
 use App\Http\Controllers\DettesInternesController;
 use App\Http\Controllers\GestionnaireController;
+use App\Http\Controllers\NotificationController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -37,6 +38,7 @@ Route::get('commandes-livrees', [CommandeController::class, 'livrees'])->name('c
 Route::get('commandes-non-livrees', [CommandeController::class, 'nonLivrees'])->name('commandes.non-livrees');
 Route::get('commandes-attribution', [CommandeController::class, 'attribution'])->name('commandes.attribution');
 Route::post('commandes-attribution-masse', [CommandeController::class, 'attribuerMasse'])->name('commandes.attribuer-masse');
+Route::post('commandes-changer-statut-masse', [CommandeController::class, 'changerStatutMasse'])->name('commandes.changer-statut-masse');
 Route::delete('commandes-supprimer-masse', [CommandeController::class, 'supprimerMasse'])->name('commandes.supprimer-masse');
 Route::get('commandes-print', [CommandeController::class, 'print'])->name('commandes.print');
 Route::patch('commandes/{commande}/marquer-livre', [CommandeController::class, 'marquerLivre'])->name('commandes.marquer-livre');
@@ -167,6 +169,11 @@ Route::get('factures/{facture}/download', [FactureController::class, 'download']
 Route::post('factures/{facture}/lignes', [FactureController::class, 'storeLigne'])->name('factures.lignes.store');
 Route::put('factures/{facture}/lignes/{ligne}', [FactureController::class, 'updateLigne'])->name('factures.lignes.update');
 Route::delete('factures/{facture}/lignes/{ligne}', [FactureController::class, 'destroyLigne'])->name('factures.lignes.destroy');
+
+// Notifications
+Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+Route::post('notifications', [NotificationController::class, 'store'])->name('notifications.store');
+Route::delete('notifications/{notificationNumero}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
 // Dettes internes
 Route::get('dettes-internes', [DettesInternesController::class, 'index'])->name('dettes-internes.index');

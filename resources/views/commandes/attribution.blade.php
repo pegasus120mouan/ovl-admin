@@ -35,10 +35,10 @@
                     <div class="form-group">
                         <label>Statut</label>
                         <select name="statut" class="form-control">
-                            <option value="Non Livré" {{ request('statut', 'Non Livré') == 'Non Livré' ? 'selected' : '' }}>Non Livré</option>
+                            <option value="tous" {{ !request('statut') || request('statut') == 'tous' ? 'selected' : '' }}>Tous</option>
+                            <option value="Non Livré" {{ request('statut') == 'Non Livré' ? 'selected' : '' }}>Non Livré</option>
                             <option value="Livré" {{ request('statut') == 'Livré' ? 'selected' : '' }}>Livré</option>
                             <option value="Retour" {{ request('statut') == 'Retour' ? 'selected' : '' }}>Retour</option>
-                            <option value="" {{ request('statut') === '' ? 'selected' : '' }}>Tous</option>
                         </select>
                     </div>
                 </div>
@@ -95,6 +95,9 @@
                 <div class="d-flex" style="gap: 10px;">
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalAttribuerMasse">
                         <i class="fas fa-user-plus mr-1"></i>Attribuer à un livreur
+                    </button>
+                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#modalChangerStatutMasse">
+                        <i class="fas fa-sync mr-1"></i>Changer statut
                     </button>
                     <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modalSupprimerMasse">
                         <i class="fas fa-trash mr-1"></i>Supprimer
@@ -291,6 +294,54 @@
     </div>
 </div>
 
+<!-- Modal Changer statut en masse -->
+<div class="modal fade" id="modalChangerStatutMasse" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-sync mr-2"></i>Changer le statut
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formChangerStatutMasse" action="{{ route('commandes.changer-statut-masse') }}" method="POST">
+                @csrf
+                <div id="statutCommandeIds"></div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <span class="fa-stack fa-2x">
+                            <i class="fas fa-circle fa-stack-2x text-warning"></i>
+                            <i class="fas fa-exchange-alt fa-stack-1x fa-inverse"></i>
+                        </span>
+                    </div>
+                    <p class="text-center mb-3">
+                        Vous allez changer le statut de <strong id="statutCount">0</strong> commande(s).
+                    </p>
+                    <div class="form-group">
+                        <label><strong>Nouveau statut</strong></label>
+                        <select name="statut" class="form-control" required>
+                            <option value="">-- Choisir un statut --</option>
+                            <option value="Non Livré">Non Livré</option>
+                            <option value="Livré">Livré</option>
+                            <option value="Retour">Retour</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-warning px-4">
+                        <i class="fas fa-check mr-1"></i>Appliquer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Supprimer en masse -->
 <div class="modal fade" id="modalSupprimerMasse" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -352,6 +403,7 @@ $(function() {
         var count = selectedIds.length;
         $('#selectedCount').text(count);
         $('#attribuerCount').text(count);
+        $('#statutCount').text(count);
         $('#supprimerCount').text(count);
 
         if (count > 0) {
@@ -362,9 +414,11 @@ $(function() {
 
         // Mettre à jour les inputs cachés
         $('#attribuerCommandeIds').html('');
+        $('#statutCommandeIds').html('');
         $('#supprimerCommandeIds').html('');
         selectedIds.forEach(function(id) {
             $('#attribuerCommandeIds').append('<input type="hidden" name="commande_ids[]" value="' + id + '">');
+            $('#statutCommandeIds').append('<input type="hidden" name="commande_ids[]" value="' + id + '">');
             $('#supprimerCommandeIds').append('<input type="hidden" name="commande_ids[]" value="' + id + '">');
         });
     }
@@ -392,6 +446,14 @@ $(function() {
     });
 
     $('#formSupprimerMasse').on('submit', function(e) {
+        if (selectedIds.length === 0) {
+            e.preventDefault();
+            alert('Veuillez sélectionner au moins une commande.');
+            return false;
+        }
+    });
+
+    $('#formChangerStatutMasse').on('submit', function(e) {
         if (selectedIds.length === 0) {
             e.preventDefault();
             alert('Veuillez sélectionner au moins une commande.');

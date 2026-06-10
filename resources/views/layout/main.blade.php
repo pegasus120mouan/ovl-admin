@@ -29,6 +29,53 @@
   <link rel="stylesheet" href="{{ asset('plugins/daterangepicker/daterangepicker.css') }}">
   <!-- summernote -->
   <link rel="stylesheet" href="{{ asset('plugins/summernote/summernote-bs4.min.css') }}">
+  <style>
+    .main-sidebar .nav-sidebar .nav-icon {
+      opacity: 1;
+    }
+    .main-sidebar .nav-sidebar .nav-link.active .nav-icon,
+    .main-sidebar .nav-sidebar .nav-link:hover .nav-icon {
+      opacity: 1;
+    }
+    .main-sidebar .nav-sidebar .fa-tachometer-alt { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-calendar-day { color: #20c997 !important; }
+    .main-sidebar .nav-sidebar .fa-history { color: #6f42c1 !important; }
+    .main-sidebar .nav-sidebar .fa-chart-bar { color: #6610f2 !important; }
+    .main-sidebar .nav-sidebar .fa-chart-line { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-database { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-box { color: #fd7e14 !important; }
+    .main-sidebar .nav-sidebar .fa-list { color: #6c757d !important; }
+    .main-sidebar .nav-sidebar .fa-check-circle { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-times-circle { color: #ffc107 !important; }
+    .main-sidebar .nav-sidebar .fa-user-plus { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-check-double { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-exclamation-triangle { color: #dc3545 !important; }
+    .main-sidebar .nav-sidebar .fa-coins { color: #ffc107 !important; }
+    .main-sidebar .nav-sidebar .fa-user-check { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-motorcycle { color: #fd7e14 !important; }
+    .main-sidebar .nav-sidebar .fa-money-bill-wave { color: #20c997 !important; }
+    .main-sidebar .nav-sidebar .fa-users { color: #007bff !important; }
+    .main-sidebar .nav-sidebar .fa-user-friends { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-store { color: #e83e8c !important; }
+    .main-sidebar .nav-sidebar .fa-edit { color: #6f42c1 !important; }
+    .main-sidebar .nav-sidebar .fa-user-shield { color: #dc3545 !important; }
+    .main-sidebar .nav-sidebar .fa-user-tie { color: #6610f2 !important; }
+    .main-sidebar .nav-sidebar .fa-lock { color: #6c757d !important; }
+    .main-sidebar .nav-sidebar .fa-table { color: #20c997 !important; }
+    .main-sidebar .nav-sidebar .fa-city { color: #007bff !important; }
+    .main-sidebar .nav-sidebar .fa-map { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-calendar-alt { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-image { color: #e83e8c !important; }
+    .main-sidebar .nav-sidebar .fa-file-contract { color: #6f42c1 !important; }
+    .main-sidebar .nav-sidebar .fa-envelope { color: #fd7e14 !important; }
+    .main-sidebar .nav-sidebar .fa-file-invoice { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-hand-holding-usd { color: #28a745 !important; }
+    .main-sidebar .nav-sidebar .fa-book { color: #ffc107 !important; }
+    .main-sidebar .nav-sidebar .fa-bell { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-plus-square { color: #e83e8c !important; }
+    .main-sidebar .nav-sidebar .fa-search { color: #007bff !important; }
+    .main-sidebar .nav-sidebar .fa-circle { color: #adb5bd !important; }
+  </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -336,19 +383,19 @@
               </li>
               <li class="nav-item">
                 <a href="{{ route('commandes.livrees') }}" class="nav-link">
-                  <i class="fas fa-check-circle nav-icon text-success"></i>
+                  <i class="fas fa-check-circle nav-icon"></i>
                   <p>Commandes livrées</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ route('commandes.non-livrees') }}" class="nav-link">
-                  <i class="fas fa-times-circle nav-icon text-warning"></i>
+                  <i class="fas fa-times-circle nav-icon"></i>
                   <p>Commandes non livrées</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ route('commandes.attribution') }}" class="nav-link">
-                  <i class="fas fa-user-plus nav-icon text-info"></i>
+                  <i class="fas fa-user-plus nav-icon"></i>
                   <p>Attribution commandes</p>
                 </a>
               </li>
@@ -356,7 +403,7 @@
           </li>
           <li class="nav-item">
             <a href="{{ route('commandes.points-valides') }}" class="nav-link">
-              <i class="nav-icon fas fa-check-double text-success"></i>
+              <i class="nav-icon fas fa-check-double"></i>
               <p>Points validés clients
                 <span class="badge badge-danger ml-1">{{ $pointsValidesNonPayes ?? 0 }}</span>
               </p>
@@ -364,7 +411,7 @@
           </li>
           <li class="nav-item">
             <a href="{{ route('reclamations.index') }}" class="nav-link">
-              <i class="nav-icon fas fa-exclamation-triangle text-danger"></i>
+              <i class="nav-icon fas fa-exclamation-triangle"></i>
               <p>Réclamations
                 <span class="badge badge-danger ml-1">{{ $reclamationsEnAttente ?? 0 }}</span>
               </p>
@@ -553,6 +600,13 @@
             <a href="{{ route('dettes-internes.index') }}" class="nav-link">
               <i class="nav-icon fas fa-book"></i>
               <p>Dettes internes</p>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a href="{{ route('notifications.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-bell"></i>
+              <p>Notifications</p>
             </a>
           </li>
           <li class="nav-item">
