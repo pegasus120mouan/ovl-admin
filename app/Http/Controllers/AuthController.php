@@ -10,6 +10,7 @@ use App\Models\PaiePeriode;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use App\Models\Versement;
+use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -391,6 +392,14 @@ class AuthController extends Controller
                 ->sum('depense');
         }
 
+        $smsDisponibles = null;
+        try {
+            $smsBalance = SmsService::checkBalance();
+            $smsDisponibles = $smsBalance['sms_disponibles'] ?? null;
+        } catch (\Throwable $e) {
+            // Ne pas bloquer le tableau de bord si l'API SMS est indisponible.
+        }
+
         return view('manager', compact(
             'nbColisRecusAnnee',
             'nbColisLivresAnnee',
@@ -428,7 +437,8 @@ class AuthController extends Controller
             'moisLabels',
             'colisRecusParMois',
             'gainsParMois',
-            'depensesParMois'
+            'depensesParMois',
+            'smsDisponibles'
         ));
     }
 }

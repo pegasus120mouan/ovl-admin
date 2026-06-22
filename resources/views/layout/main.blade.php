@@ -74,6 +74,7 @@
     .main-sidebar .nav-sidebar .fa-bell { color: #17a2b8 !important; }
     .main-sidebar .nav-sidebar .fa-plus-square { color: #e83e8c !important; }
     .main-sidebar .nav-sidebar .fa-search { color: #007bff !important; }
+    .main-sidebar .nav-sidebar .fa-comment-dots { color: #17a2b8 !important; }
     .main-sidebar .nav-sidebar .fa-circle { color: #adb5bd !important; }
   </style>
 </head>
@@ -676,6 +677,14 @@
                 </a>
               </li>
             </ul>
+          </li>
+
+
+          <li class="nav-item">
+            <a href="{{ route('solde-sms.index') }}" class="nav-link {{ request()->routeIs('solde-sms.*') ? 'active' : '' }}">
+              <i class="nav-icon fas fa-comment-dots"></i>
+              <p>Solde SMS</p>
+            </a>
           </li>
         </ul>
       </nav>

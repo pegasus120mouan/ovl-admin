@@ -186,6 +186,17 @@
                                 <div class="ovl-kpi-value" style="font-size: 20px;">{{ number_format($montantDettesRestantTotal ?? 0, 0, ',', ' ') }} XOF</div>
                             </div>
                         </div>
+
+                        <div class="col-12 col-md" style="padding: 0;">
+                            <a href="{{ route('solde-sms.index') }}" class="text-dark" style="text-decoration: none;">
+                                <div class="ovl-kpi" style="border-left: 6px solid #20c997; padding: 10px 12px; box-shadow: none;">
+                                    <div class="ovl-kpi-label" style="margin-bottom: 4px;">SMS disponibles</div>
+                                    <div class="ovl-kpi-value" style="font-size: 20px;">
+                                        {{ isset($smsDisponibles) ? number_format($smsDisponibles, 0, ',', ' ') : '—' }}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
                     </div>
                     </div>
                 </div>

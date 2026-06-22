@@ -21,6 +21,7 @@ use App\Http\Controllers\PaieController;
 use App\Http\Controllers\DettesInternesController;
 use App\Http\Controllers\GestionnaireController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SoldeSmsController;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -174,6 +175,9 @@ Route::delete('factures/{facture}/lignes/{ligne}', [FactureController::class, 'd
 Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
 Route::post('notifications', [NotificationController::class, 'store'])->name('notifications.store');
 Route::delete('notifications/{notificationNumero}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+// Solde SMS
+Route::get('solde-sms', [SoldeSmsController::class, 'index'])->name('solde-sms.index');
 
 // Dettes internes
 Route::get('dettes-internes', [DettesInternesController::class, 'index'])->name('dettes-internes.index');
