@@ -234,6 +234,14 @@ class CommandeController extends Controller
             if (!array_key_exists('cout_reel', $validated) || $validated['cout_reel'] === null || (int) $validated['cout_reel'] === 0) {
                 $validated['cout_reel'] = (int) $validated['cout_global'] - (int) $validated['cout_livraison'];
             }
+        } elseif (array_key_exists('cout_global', $validated) || array_key_exists('cout_livraison', $validated)) {
+            $global = array_key_exists('cout_global', $validated)
+                ? (int) $validated['cout_global']
+                : (int) $commande->cout_global;
+            $livraison = array_key_exists('cout_livraison', $validated)
+                ? (int) $validated['cout_livraison']
+                : (int) $commande->cout_livraison;
+            $validated['cout_reel'] = $global - $livraison;
         }
 
         // Gérer les dates selon le statut
@@ -268,12 +276,42 @@ class CommandeController extends Controller
             $this->syncRecettePointLivreur($commande->livreur_id, $commande->date_livraison);
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'commande' => $this->commandeInlinePayload(
+                    $commande->fresh()->load(['client.boutique', 'livreur'])
+                ),
+            ]);
+        }
+
         $redirectTo = $request->input('redirect_to');
         if (is_string($redirectTo) && $redirectTo !== '') {
             return redirect()->to($redirectTo)->with('success', 'Commande mise à jour avec succès');
         }
 
         return redirect()->route('commandes.index')->with('success', 'Commande mise à jour avec succès');
+    }
+
+    private function commandeInlinePayload(Commande $commande): array
+    {
+        return [
+            'id' => $commande->id,
+            'communes' => $commande->communes,
+            'cout_global' => (int) $commande->cout_global,
+            'cout_livraison' => (int) $commande->cout_livraison,
+            'cout_reel' => (int) $commande->cout_reel,
+            'utilisateur_id' => $commande->utilisateur_id,
+            'livreur_id' => $commande->livreur_id,
+            'statut' => $commande->statut,
+            'date_reception' => $commande->date_reception?->format('Y-m-d'),
+            'date_livraison' => $commande->date_livraison?->format('Y-m-d'),
+            'date_retour' => $commande->date_retour?->format('Y-m-d'),
+            'boutique_nom' => $commande->client->boutique->nom ?? 'N/A',
+            'livreur_nom' => $commande->livreur
+                ? trim(($commande->livreur->nom ?? '') . ' ' . ($commande->livreur->prenoms ?? ''))
+                : null,
+        ];
     }
 
     public function destroy(Commande $commande)

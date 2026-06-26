@@ -9,37 +9,17 @@ class SmsService
 {
     public static function sendPin(string $to, string $pin, ?string $nom = null, ?string $prenoms = null): void
     {
-        $baseUrl = (string) env('SMS_API_BASE_URL', 'https://www.hsms.ci');
-        $baseUrl = preg_replace('#^https?://hsms\.ci#i', 'https://www.hsms.ci', $baseUrl) ?? $baseUrl;
-        $url = rtrim($baseUrl, '/') . '/api/envoi-sms/';
+        ['token' => $token, 'client_id' => $clientId, 'client_secret' => $clientSecret] = self::credentials();
+        $url = self::apiUrl('/api/envoi-sms/');
 
-        $token = trim((string) env('SMS_API_TOKEN', ''));
-        $clientId = trim((string) env('SMS_CLIENT_ID', ''));
-        $clientSecret = trim((string) env('SMS_CLIENT_SECRET', ''));
-
-        if ($token === '' || $clientId === '' || $clientSecret === '') {
-            Log::warning('HSMS sendPin skipped: missing SMS credentials');
-            throw new \RuntimeException('SMS credentials missing');
-        }
-
-        $telephone = preg_replace('/\s+/', '', $to);
-        if (is_string($telephone)) {
-            $telephone = ltrim($telephone, '+');
-        }
-
-        if (is_string($telephone) && str_starts_with($telephone, '0') && strlen($telephone) === 10) {
-            $telephone = '225' . $telephone;
-        }
+        $telephone = self::normalizePhone($to);
 
         $telephoneLocal = (string) $telephone;
         if (str_starts_with($telephoneLocal, '225')) {
             $telephoneLocal = substr($telephoneLocal, 3);
         }
 
-        $template = (string) env(
-            'SMS_PIN_MESSAGE_TEMPLATE',
-            'Bienvenue sur OVLDELIVERY, {nom} {prenoms}. Vos identifiants de connexion sont : {telephone_local} / {pin}. Merci.'
-        );
+        $template = (string) config('sms.pin_message_template');
 
         $replacements = [
             '{pin}' => $pin,
@@ -59,9 +39,7 @@ class SmsService
         ];
 
         try {
-            $verifySsl = filter_var(env('SMS_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN);
-
-            $authPrefix = (string) env('SMS_AUTH_PREFIX', 'Bearer');
+            $authPrefix = (string) config('sms.auth_prefix', 'Bearer');
             $authHeader = trim($authPrefix . ' ' . trim($token));
 
             Log::info('HSMS sendPin auth header prepared', [
@@ -77,31 +55,7 @@ class SmsService
                 'client_secret_len' => strlen($clientSecret),
             ]);
 
-            $request = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                ->withHeaders(['Authorization' => $authHeader])
-                ->asMultipart();
-
-            if (!$verifySsl) {
-                $request = $request->withoutVerifying();
-            }
-
-            $response = $request->post($url, $multipart);
-
-            if (in_array($response->status(), [301, 302, 307, 308], true)) {
-                $redirectUrl = (string) $response->header('Location');
-
-                if ($redirectUrl !== '') {
-                    $redirectRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                        ->withHeaders(['Authorization' => $authHeader])
-                        ->asMultipart();
-
-                    if (!$verifySsl) {
-                        $redirectRequest = $redirectRequest->withoutVerifying();
-                    }
-
-                    $response = $redirectRequest->post($redirectUrl, $multipart);
-                }
-            }
+            $response = self::postMultipart($url, $multipart, $authHeader);
 
             if ($response->status() === 401) {
                 $fallbackPrefix = strtolower($authPrefix) === 'bearer' ? 'Token' : 'Bearer';
@@ -112,15 +66,7 @@ class SmsService
                     'fallback_prefix' => $fallbackPrefix,
                 ]);
 
-                $fallbackRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                    ->withHeaders(['Authorization' => $fallbackHeader])
-                    ->asMultipart();
-
-                if (!$verifySsl) {
-                    $fallbackRequest = $fallbackRequest->withoutVerifying();
-                }
-
-                $response = $fallbackRequest->post($url, $multipart);
+                $response = self::postMultipart($url, $multipart, $fallbackHeader);
             }
 
             if (!$response->successful()) {
@@ -143,27 +89,9 @@ class SmsService
 
     public static function sendMessage(string $to, string $message): void
     {
-        $baseUrl = (string) env('SMS_API_BASE_URL', 'https://www.hsms.ci');
-        $baseUrl = preg_replace('#^https?://hsms\.ci#i', 'https://www.hsms.ci', $baseUrl) ?? $baseUrl;
-        $url = rtrim($baseUrl, '/') . '/api/envoi-sms/';
-
-        $token = trim((string) env('SMS_API_TOKEN', ''));
-        $clientId = trim((string) env('SMS_CLIENT_ID', ''));
-        $clientSecret = trim((string) env('SMS_CLIENT_SECRET', ''));
-
-        if ($token === '' || $clientId === '' || $clientSecret === '') {
-            Log::warning('HSMS sendMessage skipped: missing SMS credentials');
-            throw new \RuntimeException('SMS credentials missing');
-        }
-
-        $telephone = preg_replace('/\s+/', '', $to);
-        if (is_string($telephone)) {
-            $telephone = ltrim($telephone, '+');
-        }
-
-        if (is_string($telephone) && str_starts_with($telephone, '0') && strlen($telephone) === 10) {
-            $telephone = '225' . $telephone;
-        }
+        ['token' => $token, 'client_id' => $clientId, 'client_secret' => $clientSecret] = self::credentials();
+        $url = self::apiUrl('/api/envoi-sms/');
+        $telephone = self::normalizePhone($to);
 
         $multipart = [
             ['name' => 'clientid', 'contents' => $clientId],
@@ -173,9 +101,7 @@ class SmsService
         ];
 
         try {
-            $verifySsl = filter_var(env('SMS_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN);
-
-            $authPrefix = (string) env('SMS_AUTH_PREFIX', 'Bearer');
+            $authPrefix = (string) config('sms.auth_prefix', 'Bearer');
             $authHeader = trim($authPrefix . ' ' . trim($token));
 
             Log::info('HSMS sendMessage auth header prepared', [
@@ -191,31 +117,7 @@ class SmsService
                 'client_secret_len' => strlen($clientSecret),
             ]);
 
-            $request = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                ->withHeaders(['Authorization' => $authHeader])
-                ->asMultipart();
-
-            if (!$verifySsl) {
-                $request = $request->withoutVerifying();
-            }
-
-            $response = $request->post($url, $multipart);
-
-            if (in_array($response->status(), [301, 302, 307, 308], true)) {
-                $redirectUrl = (string) $response->header('Location');
-
-                if ($redirectUrl !== '') {
-                    $redirectRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                        ->withHeaders(['Authorization' => $authHeader])
-                        ->asMultipart();
-
-                    if (!$verifySsl) {
-                        $redirectRequest = $redirectRequest->withoutVerifying();
-                    }
-
-                    $response = $redirectRequest->post($redirectUrl, $multipart);
-                }
-            }
+            $response = self::postMultipart($url, $multipart, $authHeader);
 
             if ($response->status() === 401) {
                 $fallbackPrefix = strtolower($authPrefix) === 'bearer' ? 'Token' : 'Bearer';
@@ -226,15 +128,7 @@ class SmsService
                     'fallback_prefix' => $fallbackPrefix,
                 ]);
 
-                $fallbackRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                    ->withHeaders(['Authorization' => $fallbackHeader])
-                    ->asMultipart();
-
-                if (!$verifySsl) {
-                    $fallbackRequest = $fallbackRequest->withoutVerifying();
-                }
-
-                $response = $fallbackRequest->post($url, $multipart);
+                $response = self::postMultipart($url, $multipart, $fallbackHeader);
             }
 
             if (!$response->successful()) {
@@ -265,18 +159,8 @@ class SmsService
      */
     public static function checkBalance(): array
     {
-        $baseUrl = (string) env('SMS_API_BASE_URL', 'https://www.hsms.ci');
-        $baseUrl = preg_replace('#^https?://hsms\.ci#i', 'https://www.hsms.ci', $baseUrl) ?? $baseUrl;
-        $url = rtrim($baseUrl, '/') . '/api/check-sms/';
-
-        $token = trim((string) env('SMS_API_TOKEN', ''));
-        $clientId = trim((string) env('SMS_CLIENT_ID', ''));
-        $clientSecret = trim((string) env('SMS_CLIENT_SECRET', ''));
-
-        if ($token === '' || $clientId === '' || $clientSecret === '') {
-            Log::warning('HSMS checkBalance skipped: missing SMS credentials');
-            throw new \RuntimeException('Identifiants SMS manquants dans la configuration.');
-        }
+        ['token' => $token, 'client_id' => $clientId, 'client_secret' => $clientSecret] = self::credentials();
+        $url = self::apiUrl('/api/check-sms/');
 
         $payload = [
             'clientid' => $clientId,
@@ -284,58 +168,15 @@ class SmsService
         ];
 
         try {
-            $verifySsl = filter_var(env('SMS_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN);
-            $authPrefix = (string) env('SMS_AUTH_PREFIX', 'Bearer');
+            $authPrefix = (string) config('sms.auth_prefix', 'Bearer');
             $authHeader = trim($authPrefix . ' ' . trim($token));
 
-            $request = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                ->withHeaders([
-                    'Authorization' => $authHeader,
-                    'Accept' => 'application/json',
-                ])
-                ->asJson();
-
-            if (!$verifySsl) {
-                $request = $request->withoutVerifying();
-            }
-
-            $response = $request->post($url, $payload);
-
-            if (in_array($response->status(), [301, 302, 307, 308], true)) {
-                $redirectUrl = (string) $response->header('Location');
-
-                if ($redirectUrl !== '') {
-                    $redirectRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                        ->withHeaders([
-                            'Authorization' => $authHeader,
-                            'Accept' => 'application/json',
-                        ])
-                        ->asJson();
-
-                    if (!$verifySsl) {
-                        $redirectRequest = $redirectRequest->withoutVerifying();
-                    }
-
-                    $response = $redirectRequest->post($redirectUrl, $payload);
-                }
-            }
+            $response = self::postJson($url, $payload, $authHeader);
 
             if ($response->status() === 401) {
                 $fallbackPrefix = strtolower($authPrefix) === 'bearer' ? 'Token' : 'Bearer';
                 $fallbackHeader = trim($fallbackPrefix . ' ' . trim($token));
-
-                $fallbackRequest = Http::timeout((int) env('SMS_TIMEOUT', 10))
-                    ->withHeaders([
-                        'Authorization' => $fallbackHeader,
-                        'Accept' => 'application/json',
-                    ])
-                    ->asJson();
-
-                if (!$verifySsl) {
-                    $fallbackRequest = $fallbackRequest->withoutVerifying();
-                }
-
-                $response = $fallbackRequest->post($url, $payload);
+                $response = self::postJson($url, $payload, $fallbackHeader);
             }
 
             if (!$response->successful()) {
@@ -375,5 +216,105 @@ class SmsService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * @return array{token: string, client_id: string, client_secret: string}
+     */
+    private static function credentials(): array
+    {
+        $token = trim((string) config('sms.api_token', ''));
+        $clientId = trim((string) config('sms.client_id', ''));
+        $clientSecret = trim((string) config('sms.client_secret', ''));
+
+        if ($token === '' || $clientId === '' || $clientSecret === '') {
+            Log::warning('HSMS skipped: missing SMS credentials');
+            throw new \RuntimeException('Identifiants SMS manquants dans la configuration.');
+        }
+
+        return [
+            'token' => $token,
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+        ];
+    }
+
+    private static function apiUrl(string $path): string
+    {
+        $baseUrl = (string) config('sms.api_base_url', 'https://hsms.ci');
+        $baseUrl = preg_replace('#^https?://hsms\.ci#i', 'https://www.hsms.ci', $baseUrl) ?? $baseUrl;
+
+        return rtrim($baseUrl, '/') . $path;
+    }
+
+    private static function normalizePhone(string $to): string
+    {
+        $telephone = preg_replace('/\s+/', '', $to);
+        $telephone = ltrim((string) $telephone, '+');
+
+        if (str_starts_with($telephone, '0') && strlen($telephone) === 10) {
+            $telephone = '225' . $telephone;
+        }
+
+        return $telephone;
+    }
+
+    private static function httpClient()
+    {
+        $request = Http::timeout((int) config('sms.timeout', 10));
+
+        if (!config('sms.verify_ssl', true)) {
+            $request = $request->withoutVerifying();
+        }
+
+        return $request;
+    }
+
+    private static function postMultipart(string $url, array $multipart, string $authHeader)
+    {
+        $response = self::httpClient()
+            ->withHeaders(['Authorization' => $authHeader])
+            ->asMultipart()
+            ->post($url, $multipart);
+
+        if (in_array($response->status(), [301, 302, 307, 308], true)) {
+            $redirectUrl = (string) $response->header('Location');
+
+            if ($redirectUrl !== '') {
+                $response = self::httpClient()
+                    ->withHeaders(['Authorization' => $authHeader])
+                    ->asMultipart()
+                    ->post($redirectUrl, $multipart);
+            }
+        }
+
+        return $response;
+    }
+
+    private static function postJson(string $url, array $payload, string $authHeader)
+    {
+        $response = self::httpClient()
+            ->withHeaders([
+                'Authorization' => $authHeader,
+                'Accept' => 'application/json',
+            ])
+            ->asJson()
+            ->post($url, $payload);
+
+        if (in_array($response->status(), [301, 302, 307, 308], true)) {
+            $redirectUrl = (string) $response->header('Location');
+
+            if ($redirectUrl !== '') {
+                $response = self::httpClient()
+                    ->withHeaders([
+                        'Authorization' => $authHeader,
+                        'Accept' => 'application/json',
+                    ])
+                    ->asJson()
+                    ->post($redirectUrl, $payload);
+            }
+        }
+
+        return $response;
     }
 }
