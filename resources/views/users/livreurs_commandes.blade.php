@@ -5,6 +5,29 @@
 
 @section('content')
 <div class="container-fluid">
+  <style>
+    .editable-cell {
+      cursor: pointer;
+      position: relative;
+    }
+    .editable-cell:hover {
+      background-color: #fff8e1 !important;
+      box-shadow: inset 0 0 0 1px #ffc107;
+    }
+    .editable-cell.is-editing {
+      padding: 4px !important;
+      background-color: #fff !important;
+    }
+    .editable-cell.is-saving {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .editable-cell .form-control,
+    .editable-cell .custom-select {
+      min-width: 120px;
+      font-size: 0.875rem;
+    }
+  </style>
   <div class="row">
     <div class="col-lg-3 col-6">
       <div class="small-box bg-info">
@@ -93,14 +116,14 @@
 
             <tbody>
               @forelse($commandes as $commande)
-                <tr>
-                  <td style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $commande->communes }}">{{ $commande->communes }}</td>
-                  <td>{{ number_format($commande->cout_global, 0, ',', ' ') }}</td>
-                  <td>{{ number_format($commande->cout_livraison, 0, ',', ' ') }}</td>
-                  <td>{{ number_format($commande->cout_reel, 0, ',', ' ') }}</td>
-                  <td>{{ $commande->client->boutique->nom ?? 'N/A' }}</td>
-                  <td>{{ $commande->livreur ? ($commande->livreur->nom . ' ' . $commande->livreur->prenoms) : 'N/A' }}</td>
-                  <td>
+                <tr data-commande-id="{{ $commande->id }}" data-update-url="{{ route('commandes.update', $commande) }}">
+                  <td class="editable-cell" data-field="communes" data-type="text" data-value="{{ $commande->communes }}" style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $commande->communes }}">{{ $commande->communes }}</td>
+                  <td class="editable-cell" data-field="cout_global" data-type="number" data-value="{{ $commande->cout_global }}">{{ number_format($commande->cout_global, 0, ',', ' ') }}</td>
+                  <td class="editable-cell" data-field="cout_livraison" data-type="select-cout" data-value="{{ $commande->cout_livraison }}">{{ number_format($commande->cout_livraison, 0, ',', ' ') }}</td>
+                  <td class="editable-cell editable-readonly" data-field="cout_reel" data-type="readonly" data-value="{{ $commande->cout_reel }}">{{ number_format($commande->cout_reel, 0, ',', ' ') }}</td>
+                  <td class="editable-cell" data-field="utilisateur_id" data-type="select-client" data-value="{{ $commande->utilisateur_id }}">{{ $commande->client->boutique->nom ?? 'N/A' }}</td>
+                  <td class="editable-cell" data-field="livreur_id" data-type="select-livreur" data-value="{{ $commande->livreur_id ?? '' }}">{{ $commande->livreur ? ($commande->livreur->nom . ' ' . $commande->livreur->prenoms) : 'N/A' }}</td>
+                  <td class="editable-cell" data-field="statut" data-type="select-statut" data-value="{{ $commande->statut }}">
                     @if($commande->statut == 'Livré')
                       <img src="{{ asset('img/icones/ok.png') }}" alt="Livré" title="Livré" style="height:30px; width:auto;">
                     @elseif($commande->statut == 'Non Livré')
@@ -111,15 +134,15 @@
                       <span class="badge badge-secondary">{{ $commande->statut }}</span>
                     @endif
                   </td>
-                  <td>{{ $commande->date_reception ? $commande->date_reception->format('d-m-Y') : 'N/A' }}</td>
-                  <td>
+                  <td class="editable-cell" data-field="date_reception" data-type="date" data-value="{{ $commande->date_reception ? $commande->date_reception->format('Y-m-d') : '' }}">{{ $commande->date_reception ? $commande->date_reception->format('d-m-Y') : 'N/A' }}</td>
+                  <td class="editable-cell" data-field="date_livraison" data-type="date" data-value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
                     @if($commande->date_livraison)
                       {{ $commande->date_livraison->format('d-m-Y') }}
                     @else
                       <span class="badge badge-secondary">Pas encore livré</span>
                     @endif
                   </td>
-                  <td>{{ $commande->date_retour ? $commande->date_retour->format('d-m-Y') : 'N/A' }}</td>
+                  <td class="editable-cell" data-field="date_retour" data-type="date" data-value="{{ $commande->date_retour ? $commande->date_retour->format('Y-m-d') : '' }}">{{ $commande->date_retour ? $commande->date_retour->format('d-m-Y') : 'N/A' }}</td>
                   <td>
                     <div class="d-inline-flex align-items-center" style="gap: 6px;">
                       <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#modalModifierCommande{{ $commande->id }}" title="Modifier">
@@ -657,6 +680,9 @@
     });
   })();
 </script>
+
+@include('partials.commandes_inline_edit')
+
 @endsection
 
 @push('scripts')
