@@ -1,45 +1,22 @@
-<!-- Modal confirmation modification inline -->
-<div class="modal fade" id="modalConfirmInlineEdit" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+<!-- Modal succès modification inline -->
+<div class="modal fade" id="modalInlineEditSuccess" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-warning">
+      <div class="modal-header bg-success text-white border-0">
         <h5 class="modal-title">
-          <i class="fas fa-edit mr-2"></i>Confirmer la modification
+          <i class="fas fa-check-circle mr-2"></i>Modification enregistrée
         </h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div class="modal-body">
-        <p class="mb-3">Voulez-vous enregistrer cette modification ?</p>
-        <table class="table table-sm table-bordered mb-0">
-          <tbody>
-            <tr>
-              <th style="width: 35%">Commande</th>
-              <td id="inlineEditCommandeId">—</td>
-            </tr>
-            <tr>
-              <th>Champ</th>
-              <td id="inlineEditFieldLabel">—</td>
-            </tr>
-            <tr>
-              <th>Ancienne valeur</th>
-              <td id="inlineEditOldValue">—</td>
-            </tr>
-            <tr>
-              <th>Nouvelle valeur</th>
-              <td id="inlineEditNewValue" class="font-weight-bold text-primary">—</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="modal-body text-center py-4">
+        <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+        <p class="mb-1 font-weight-bold" id="inlineEditSuccessMessage">La commande a été mise à jour.</p>
+        <p class="text-muted mb-0 small" id="inlineEditSuccessDetail"></p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal" id="btnInlineEditCancel">
-          <i class="fas fa-times mr-1"></i>Annuler
-        </button>
-        <button type="button" class="btn btn-warning" id="btnInlineEditConfirm">
-          <i class="fas fa-save mr-1"></i>Enregistrer
-        </button>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-success px-4" data-dismiss="modal">OK</button>
       </div>
     </div>
   </div>
@@ -79,7 +56,6 @@ window.commandeInlineOptions = {
 
 (function () {
   var activeCell = null;
-  var pendingSave = null;
 
   function formatNumber(value) {
     return Number(value || 0).toLocaleString('fr-FR');
@@ -116,10 +92,11 @@ window.commandeInlineOptions = {
 
   function getOptionLabel(type, value) {
     if (value === null || value === undefined || value === '') {
+      if (type === 'select-livreur') return 'Pas de livreur attribué';
       return '—';
     }
 
-    if (type === 'select-cout') {
+    if (type === 'select-cout' || type === 'number') {
       return formatNumber(value);
     }
 
@@ -131,19 +108,10 @@ window.commandeInlineOptions = {
     }
 
     if (type === 'select-livreur') {
-      if (!value) return 'Pas de livreur attribué';
       var livreur = window.commandeInlineOptions.livreurs.find(function (item) {
         return String(item.value) === String(value);
       });
       return livreur ? livreur.label : String(value);
-    }
-
-    if (type === 'select-statut') {
-      return String(value);
-    }
-
-    if (type === 'number') {
-      return formatNumber(value);
     }
 
     if (type === 'date') {
@@ -151,6 +119,14 @@ window.commandeInlineOptions = {
     }
 
     return String(value);
+  }
+
+  function showSuccessModal(commandeId, fieldLabel, newDisplay) {
+    document.getElementById('inlineEditSuccessMessage').textContent =
+      'Commande #' + commandeId + ' mise à jour avec succès.';
+    document.getElementById('inlineEditSuccessDetail').textContent =
+      fieldLabel + ' : ' + newDisplay;
+    $('#modalInlineEditSuccess').modal('show');
   }
 
   function updateRowDisplay(row, commande) {
@@ -280,8 +256,9 @@ window.commandeInlineOptions = {
     cell.innerHTML = cell.dataset.originalHtml;
     cell.classList.remove('is-editing', 'is-saving');
     delete cell.dataset.originalHtml;
-    activeCell = null;
-    pendingSave = null;
+    if (activeCell === cell) {
+      activeCell = null;
+    }
   }
 
   function buildPayload(cell, row, field, newValue) {
@@ -300,12 +277,24 @@ window.commandeInlineOptions = {
     return payload;
   }
 
-  function executeSaveEdit() {
-    if (!pendingSave) return;
+  function saveEdit(cell) {
+    var row = cell.closest('tr');
+    var editor = cell.querySelector('input, select');
+    if (!editor || !row) return;
 
-    var cell = pendingSave.cell;
-    var row = pendingSave.row;
-    var payload = pendingSave.payload;
+    var field = cell.dataset.field;
+    var type = cell.dataset.type;
+    var newValue = editor.value;
+    var oldValue = cell.dataset.value || '';
+
+    if (String(newValue) === String(oldValue)) {
+      cancelEdit(cell);
+      return;
+    }
+
+    var fieldLabel = window.commandeInlineOptions.fieldLabels[field] || field;
+    var newDisplay = getOptionLabel(type, newValue);
+    var payload = buildPayload(cell, row, field, newValue);
 
     cell.classList.add('is-saving');
 
@@ -335,53 +324,29 @@ window.commandeInlineOptions = {
       cell.classList.remove('is-editing', 'is-saving');
       delete cell.dataset.originalHtml;
       activeCell = null;
-      pendingSave = null;
-      $('#modalConfirmInlineEdit').modal('hide');
+      showSuccessModal(row.dataset.commandeId || data.commande.id, fieldLabel, newDisplay);
     })
     .catch(function (error) {
       alert(error.message || 'Impossible de mettre à jour la commande.');
       cancelEdit(cell);
       cell.classList.remove('is-saving');
-      $('#modalConfirmInlineEdit').modal('hide');
     });
   }
 
-  function confirmSaveEdit(cell) {
-    var row = cell.closest('tr');
+  function hasPendingChanges(cell) {
     var editor = cell.querySelector('input, select');
-    if (!editor || !row) return;
-
-    var field = cell.dataset.field;
-    var type = cell.dataset.type;
-    var newValue = editor.value;
-    var oldValue = cell.dataset.value || '';
-
-    if (String(newValue) === String(oldValue)) {
-      cancelEdit(cell);
-      return;
-    }
-
-    pendingSave = {
-      cell: cell,
-      row: row,
-      payload: buildPayload(cell, row, field, newValue),
-      fieldLabel: window.commandeInlineOptions.fieldLabels[field] || field,
-      oldDisplay: getOptionLabel(type, oldValue),
-      newDisplay: getOptionLabel(type, newValue)
-    };
-
-    document.getElementById('inlineEditCommandeId').textContent = '#' + (row.dataset.commandeId || '—');
-    document.getElementById('inlineEditFieldLabel').textContent = pendingSave.fieldLabel;
-    document.getElementById('inlineEditOldValue').textContent = pendingSave.oldDisplay;
-    document.getElementById('inlineEditNewValue').textContent = pendingSave.newDisplay;
-
-    $('#modalConfirmInlineEdit').modal('show');
+    if (!editor) return false;
+    return String(editor.value) !== String(cell.dataset.value || '');
   }
 
   function startEdit(cell) {
     if (cell.classList.contains('editable-readonly')) return;
     if (activeCell && activeCell !== cell) {
-      cancelEdit(activeCell);
+      if (hasPendingChanges(activeCell)) {
+        saveEdit(activeCell);
+      } else {
+        cancelEdit(activeCell);
+      }
     }
 
     activeCell = cell;
@@ -400,7 +365,7 @@ window.commandeInlineOptions = {
 
     if (editor.tagName === 'SELECT') {
       editor.addEventListener('change', function () {
-        confirmSaveEdit(cell);
+        saveEdit(cell);
       });
       editor.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
@@ -413,7 +378,7 @@ window.commandeInlineOptions = {
     editor.addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
         event.preventDefault();
-        confirmSaveEdit(cell);
+        saveEdit(cell);
       }
       if (event.key === 'Escape') {
         cancelEdit(cell);
@@ -422,8 +387,12 @@ window.commandeInlineOptions = {
 
     editor.addEventListener('blur', function () {
       setTimeout(function () {
-        if (activeCell === cell && !$('#modalConfirmInlineEdit').hasClass('show')) {
-          confirmSaveEdit(cell);
+        if (activeCell !== cell) return;
+        if ($('#modalInlineEditSuccess').hasClass('show')) return;
+        if (hasPendingChanges(cell)) {
+          saveEdit(cell);
+        } else {
+          cancelEdit(cell);
         }
       }, 120);
     });
@@ -435,25 +404,6 @@ window.commandeInlineOptions = {
     if (event.target.closest('a, button')) return;
     if (cell.classList.contains('is-editing')) return;
     startEdit(cell);
-  });
-
-  document.getElementById('btnInlineEditConfirm').addEventListener('click', executeSaveEdit);
-
-  document.getElementById('btnInlineEditCancel').addEventListener('click', function () {
-    if (pendingSave && pendingSave.cell) {
-      cancelEdit(pendingSave.cell);
-    }
-    pendingSave = null;
-  });
-
-  $('#modalConfirmInlineEdit').on('hidden.bs.modal', function () {
-    if (pendingSave && pendingSave.cell && pendingSave.cell.classList.contains('is-saving')) {
-      return;
-    }
-    if (pendingSave && pendingSave.cell && pendingSave.cell.classList.contains('is-editing')) {
-      cancelEdit(pendingSave.cell);
-    }
-    pendingSave = null;
   });
 })();
 </script>
