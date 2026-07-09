@@ -52,4 +52,15 @@ Artisan::command('points-livreurs:sync-recettes {--date= : Date YYYY-MM-DD (par 
     $this->info("Synchro terminee pour {$date}. Livreurs traites: {$updated}");
 })->purpose('Synchroniser les recettes PointsLivreur depuis les commandes livrees');
 
+Artisan::command('points-livreurs:consolidate-duplicates', function () {
+    $before = PointsLivreur::query()->count();
+
+    PointsLivreur::consolidateAllDuplicates();
+
+    $after = PointsLivreur::query()->count();
+    $merged = $before - $after;
+
+    $this->info("Consolidation terminee. Lignes fusionnees: {$merged}. Total actuel: {$after}.");
+})->purpose('Fusionner les points livreurs en double (meme livreur, meme jour)');
+
 Schedule::command('points-livreurs:sync-recettes')->hourly();

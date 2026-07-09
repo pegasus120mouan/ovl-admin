@@ -15,6 +15,8 @@ class PointsLivreurController extends Controller
 {
     public function index(Request $request)
     {
+        PointsLivreur::consolidateAllDuplicates();
+
         $perPage = $request->get('per_page', 20);
         $date = $request->get('date');
         $dateDebut = $request->get('date_debut');

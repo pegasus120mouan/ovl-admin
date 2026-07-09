@@ -75,4 +75,17 @@ class PointsLivreur extends Model
 
         return $keep->fresh();
     }
+
+    public static function consolidateAllDuplicates(): void
+    {
+        $groups = \Illuminate\Support\Facades\DB::table('points_livreurs')
+            ->select('utilisateur_id', \Illuminate\Support\Facades\DB::raw('DATE(date_commande) as jour'))
+            ->groupBy('utilisateur_id', \Illuminate\Support\Facades\DB::raw('DATE(date_commande)'))
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        foreach ($groups as $group) {
+            static::consolidateDuplicatesForLivreurDay((int) $group->utilisateur_id, $group->jour);
+        }
+    }
 }
