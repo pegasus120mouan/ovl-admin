@@ -29,10 +29,9 @@ class CommandeController extends Controller
             ->whereDate('date_livraison', $date)
             ->sum('cout_livraison');
 
-        $pointLivreur = PointsLivreur::query()
-            ->where('utilisateur_id', $livreurId)
-            ->whereDate('date_commande', $date)
-            ->first();
+        PointsLivreur::consolidateDuplicatesForLivreurDay($livreurId, $date);
+
+        $pointLivreur = PointsLivreur::forLivreurAndDate($livreurId, $date);
 
         if ($pointLivreur) {
             $pointLivreur->recette = $recette;

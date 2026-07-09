@@ -81,11 +81,17 @@
                 <td>{{ $point->date_commande ? \Carbon\Carbon::parse($point->date_commande)->format('d/m/Y') : 'N/A' }}</td>
                 <td>
                   <a href="#" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#modalModifier{{ $point->id }}"><i class="fas fa-edit"></i></a>
-                  <form action="{{ route('points-livreurs.destroy', $point->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Etes-vous sur de vouloir supprimer?')"><i class="fas fa-trash"></i></button>
-                  </form>
+                  <button type="button"
+                          class="btn btn-sm btn-danger"
+                          data-toggle="modal"
+                          data-target="#modalConfirmDeletePoint"
+                          data-action="{{ route('points-livreurs.destroy', $point->id) }}"
+                          data-livreur="{{ trim(($point->livreur->nom ?? 'N/A') . ' ' . ($point->livreur->prenoms ?? '')) }}"
+                          data-date="{{ $point->date_commande ? \Carbon\Carbon::parse($point->date_commande)->format('d/m/Y') : 'N/A' }}"
+                          data-recette="{{ number_format($point->recette, 0, ',', ' ') }}"
+                          data-gain="{{ number_format($point->gain_jour, 0, ',', ' ') }}">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </td>
               </tr>
               @empty
@@ -182,4 +188,71 @@
   </div>
 </div>
 @endforeach
+
+<!-- Modal Confirmation Suppression Point -->
+<div class="modal fade" id="modalConfirmDeletePoint" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle mr-2"></i>Confirmation de suppression
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <div class="mb-3">
+          <span class="fa-stack fa-2x">
+            <i class="fas fa-circle fa-stack-2x text-danger"></i>
+            <i class="fas fa-trash fa-stack-1x fa-inverse"></i>
+          </span>
+        </div>
+        <h5 class="mb-2">Êtes-vous sûr de vouloir supprimer ce point ?</h5>
+        <p class="text-muted mb-1">
+          <strong id="deletePointLivreur"></strong>
+        </p>
+        <p class="text-muted mb-0">
+          Date : <strong id="deletePointDate"></strong>
+          &nbsp;|&nbsp;
+          Recette : <strong id="deletePointRecette"></strong> FCFA
+          &nbsp;|&nbsp;
+          Gain : <strong id="deletePointGain"></strong> FCFA
+        </p>
+        <div class="alert alert-warning mt-3 mb-0 text-left">
+          <i class="fas fa-info-circle mr-1"></i>
+          <small>Cette action est irréversible. Le point sera définitivement supprimé.</small>
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">
+          <i class="fas fa-times mr-1"></i>Annuler
+        </button>
+        <form id="deletePointForm" method="POST" action="#" class="d-inline">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="fas fa-trash mr-1"></i>Supprimer
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+$(function() {
+  $('#modalConfirmDeletePoint').on('show.bs.modal', function(event) {
+    var button = $(event.relatedTarget);
+
+    $('#deletePointForm').attr('action', button.attr('data-action'));
+    $('#deletePointLivreur').text(button.attr('data-livreur'));
+    $('#deletePointDate').text(button.attr('data-date'));
+    $('#deletePointRecette').text(button.attr('data-recette'));
+    $('#deletePointGain').text(button.attr('data-gain'));
+  });
+});
+</script>
+@endpush

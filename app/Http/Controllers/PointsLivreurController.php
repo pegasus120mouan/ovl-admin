@@ -210,11 +210,27 @@ class PointsLivreurController extends Controller
             'depense' => 'nullable|integer',
             'date_commande' => 'required|date',
         ]);
-        
-        // Calculer le gain
-        $validated['gain_jour'] = ($validated['recette'] ?? 0) - ($validated['depense'] ?? 0);
 
+        $date = Carbon::parse($validated['date_commande'])->toDateString();
+        $validated['date_commande'] = $date;
+
+        PointsLivreur::consolidateDuplicatesForLivreurDay((int) $validated['utilisateur_id'], $date);
+
+        $existing = PointsLivreur::forLivreurAndDate((int) $validated['utilisateur_id'], $date);
+
+        if ($existing) {
+            $existing->recette = (int) ($existing->recette ?? 0) + (int) ($validated['recette'] ?? 0);
+            $existing->depense = (int) ($existing->depense ?? 0) + (int) ($validated['depense'] ?? 0);
+            $existing->recalculateGain();
+            $existing->save();
+
+            return redirect()->route('points-livreurs.index')
+                ->with('success', 'Point mis à jour : les dépenses du jour ont été additionnées.');
+        }
+
+        $validated['gain_jour'] = (int) ($validated['recette'] ?? 0) - (int) ($validated['depense'] ?? 0);
         PointsLivreur::create($validated);
+
         return redirect()->route('points-livreurs.index')->with('success', 'Point enregistre avec succes');
     }
 
@@ -231,13 +247,12 @@ class PointsLivreurController extends Controller
         
         foreach ($commandesLivrees as $livreurId => $commandes) {
             if (!$livreurId) continue;
-            
+
             $recette = $commandes->sum('cout_livraison');
-            
-            // Chercher ou créer le point livreur pour cette date
-            $pointLivreur = PointsLivreur::where('utilisateur_id', $livreurId)
-                ->whereDate('date_commande', $date)
-                ->first();
+
+            PointsLivreur::consolidateDuplicatesForLivreurDay((int) $livreurId, $date);
+
+            $pointLivreur = PointsLivreur::forLivreurAndDate((int) $livreurId, $date);
             
             if ($pointLivreur) {
                 // Mettre à jour la recette et recalculer le gain
@@ -272,10 +287,35 @@ class PointsLivreurController extends Controller
             'depense' => 'nullable|integer',
             'date_commande' => 'required|date',
         ]);
-        
-        $validated['gain_jour'] = ($validated['recette'] ?? 0) - ($validated['depense'] ?? 0);
+
+        $date = Carbon::parse($validated['date_commande'])->toDateString();
+        $validated['date_commande'] = $date;
+        $validated['gain_jour'] = (int) ($validated['recette'] ?? 0) - (int) ($validated['depense'] ?? 0);
+
+        PointsLivreur::consolidateDuplicatesForLivreurDay(
+            (int) $validated['utilisateur_id'],
+            $date
+        );
+
+        $existing = PointsLivreur::forLivreurAndDate(
+            (int) $validated['utilisateur_id'],
+            $date,
+            $pointsLivreur->id
+        );
+
+        if ($existing) {
+            $existing->recette = (int) ($existing->recette ?? 0) + (int) ($validated['recette'] ?? 0);
+            $existing->depense = (int) ($existing->depense ?? 0) + (int) ($validated['depense'] ?? 0);
+            $existing->recalculateGain();
+            $existing->save();
+            $pointsLivreur->delete();
+
+            return redirect()->route('points-livreurs.index')
+                ->with('success', 'Point fusionné avec l\'enregistrement existant pour ce livreur à cette date.');
+        }
 
         $pointsLivreur->update($validated);
+
         return redirect()->route('points-livreurs.index')->with('success', 'Point modifie avec succes');
     }
 

@@ -28,10 +28,9 @@ Artisan::command('points-livreurs:sync-recettes {--date= : Date YYYY-MM-DD (par 
 
         $recette = (int) $commandes->sum('cout_livraison');
 
-        $pointLivreur = PointsLivreur::query()
-            ->where('utilisateur_id', $livreurId)
-            ->whereDate('date_commande', $date)
-            ->first();
+        PointsLivreur::consolidateDuplicatesForLivreurDay((int) $livreurId, $date);
+
+        $pointLivreur = PointsLivreur::forLivreurAndDate((int) $livreurId, $date);
 
         if ($pointLivreur) {
             $pointLivreur->recette = $recette;
