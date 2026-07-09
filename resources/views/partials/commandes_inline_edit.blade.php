@@ -164,6 +164,11 @@ window.commandeInlineOptions = {
     var dateLivraisonCell = row.querySelector('[data-field="date_livraison"]');
     dateLivraisonCell.innerHTML = renderDateLivraison(commande.date_livraison);
     dateLivraisonCell.dataset.value = commande.date_livraison || '';
+    if (commande.statut === 'Non Livré') {
+      dateLivraisonCell.classList.add('editable-readonly');
+    } else {
+      dateLivraisonCell.classList.remove('editable-readonly');
+    }
 
     var dateRetourCell = row.querySelector('[data-field="date_retour"]');
     dateRetourCell.innerHTML = formatDateDisplay(commande.date_retour);
@@ -341,6 +346,15 @@ window.commandeInlineOptions = {
 
   function startEdit(cell) {
     if (cell.classList.contains('editable-readonly')) return;
+
+    var row = cell.closest('tr');
+    if (cell.dataset.field === 'date_livraison') {
+      var statutCell = row ? row.querySelector('[data-field="statut"]') : null;
+      if (statutCell && statutCell.dataset.value === 'Non Livré') {
+        return;
+      }
+    }
+
     if (activeCell && activeCell !== cell) {
       if (hasPendingChanges(activeCell)) {
         saveEdit(activeCell);

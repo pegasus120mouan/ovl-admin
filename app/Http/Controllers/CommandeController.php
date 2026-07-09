@@ -52,6 +52,42 @@ class CommandeController extends Controller
         }
     }
 
+    private function applyStatutDateRules(array &$validated, Commande $commande): void
+    {
+        $statut = $validated['statut'] ?? $commande->statut;
+
+        if ($statut === 'Non Livré') {
+            $validated['date_livraison'] = null;
+            $validated['date_retour'] = null;
+
+            return;
+        }
+
+        if (isset($validated['statut']) && $validated['statut'] === 'Livré') {
+            if (!array_key_exists('date_livraison', $validated) || $validated['date_livraison'] === null) {
+                $validated['date_livraison'] = $commande->date_livraison
+                    ? $commande->date_livraison->toDateString()
+                    : now()->toDateString();
+            }
+        }
+
+        if (isset($validated['statut']) && $validated['statut'] === 'Retour') {
+            if (!array_key_exists('date_retour', $validated) || $validated['date_retour'] === null) {
+                $validated['date_retour'] = $commande->date_retour
+                    ? $commande->date_retour->toDateString()
+                    : now()->toDateString();
+            }
+        }
+
+        if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison) {
+            unset($validated['date_livraison']);
+        }
+
+        if (array_key_exists('date_retour', $validated) && $validated['date_retour'] === null && $commande->date_retour) {
+            unset($validated['date_retour']);
+        }
+    }
+
     public function index()
     {
         $perPage = request('per_page', 20);
@@ -191,6 +227,11 @@ class CommandeController extends Controller
             $validated['cout_reel'] = (int) $validated['cout_global'] - (int) $validated['cout_livraison'];
         }
 
+        if (($validated['statut'] ?? 'Non Livré') === 'Non Livré') {
+            $validated['date_livraison'] = null;
+            $validated['date_retour'] = null;
+        }
+
         $commande = Commande::create($validated);
 
         if (($commande->statut ?? null) === 'Livré') {
@@ -244,27 +285,7 @@ class CommandeController extends Controller
             $validated['cout_reel'] = $global - $livraison;
         }
 
-        // Gérer les dates selon le statut
-        if (isset($validated['statut'])) {
-            if ($validated['statut'] === 'Livré') {
-                $validated['date_livraison'] = now()->toDateString();
-            } elseif ($validated['statut'] === 'Retour') {
-                $validated['date_retour'] = now()->toDateString();
-                if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison) {
-                    unset($validated['date_livraison']);
-                }
-            } elseif ($validated['statut'] === 'Non Livré') {
-                $validated['date_livraison'] = null;
-                $validated['date_retour'] = null;
-            }
-        }
-
-        if (array_key_exists('date_livraison', $validated) && $validated['date_livraison'] === null && $commande->date_livraison && (!isset($validated['statut']) || $validated['statut'] !== 'Non Livré')) {
-            unset($validated['date_livraison']);
-        }
-        if (array_key_exists('date_retour', $validated) && $validated['date_retour'] === null && $commande->date_retour && (!isset($validated['statut']) || $validated['statut'] !== 'Non Livré')) {
-            unset($validated['date_retour']);
-        }
+        $this->applyStatutDateRules($validated, $commande);
 
         $commande->update($validated);
 
@@ -718,14 +739,13 @@ class CommandeController extends Controller
 
         $updateData = ['statut' => $validated['statut']];
 
-        // Si le statut est "Livré", mettre à jour la date de livraison
         if ($validated['statut'] === 'Livré') {
             $updateData['date_livraison'] = now();
-        }
-
-        // Si le statut est "Retour", mettre à jour la date de retour
-        if ($validated['statut'] === 'Retour') {
+        } elseif ($validated['statut'] === 'Retour') {
             $updateData['date_retour'] = now();
+        } elseif ($validated['statut'] === 'Non Livré') {
+            $updateData['date_livraison'] = null;
+            $updateData['date_retour'] = null;
         }
 
         $count = Commande::whereIn('id', $validated['commande_ids'])

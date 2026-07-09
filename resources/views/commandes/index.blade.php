@@ -166,7 +166,7 @@
                         @endif
                       </td>
                       <td class="editable-cell" data-field="date_reception" data-type="date" data-value="{{ $commande->date_reception ? $commande->date_reception->format('Y-m-d') : '' }}">{{ $commande->date_reception ? $commande->date_reception->format('d-m-Y') : 'N/A' }}</td>
-                      <td class="editable-cell" data-field="date_livraison" data-type="date" data-value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
+                      <td class="editable-cell {{ $commande->statut === 'Non Livré' ? 'editable-readonly' : '' }}" data-field="date_livraison" data-type="date" data-value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
                         @if($commande->date_livraison)
                           {{ $commande->date_livraison->format('d-m-Y') }}
                         @else
@@ -177,7 +177,9 @@
                       <td>
                         <div class="d-inline-flex align-items-center" style="gap: 6px;">
                           <a href="#" class="btn btn-sm btn-info" data-toggle="modal" data-target="#modalDetailsCommande{{ $commande->id }}"><i class="fas fa-eye"></i></a>
+                          @if($commande->statut !== 'Non Livré')
                           <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalChangerDateLivraison{{ $commande->id }}" title="Changer date livraison"><i class="fas fa-calendar-check"></i></a>
+                          @endif
                           <a href="#" class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#modalChangerDateRetour{{ $commande->id }}" title="Changer date retour"><i class="fas fa-calendar-times"></i></a>
                           <a href="{{ route('commandes.edit', $commande) }}" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
                           <button type="button" class="btn btn-sm btn-danger btn-delete-commande" 
