@@ -135,7 +135,7 @@
                     @endif
                   </td>
                   <td class="editable-cell" data-field="date_reception" data-type="date" data-value="{{ $commande->date_reception ? $commande->date_reception->format('Y-m-d') : '' }}">{{ $commande->date_reception ? $commande->date_reception->format('d-m-Y') : 'N/A' }}</td>
-                  <td class="editable-cell {{ $commande->statut === 'Non Livré' ? 'editable-readonly' : '' }}" data-field="date_livraison" data-type="date" data-value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
+                  <td class="editable-cell {{ in_array($commande->statut, ['Non Livré', 'Retour'], true) ? 'editable-readonly' : '' }}" data-field="date_livraison" data-type="date" data-value="{{ $commande->date_livraison ? $commande->date_livraison->format('Y-m-d') : '' }}">
                     @if($commande->date_livraison)
                       {{ $commande->date_livraison->format('d-m-Y') }}
                     @else
@@ -148,7 +148,7 @@
                       <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#modalModifierCommande{{ $commande->id }}" title="Modifier">
                         <i class="fas fa-edit"></i>
                       </button>
-                      @if($commande->statut !== 'Non Livré')
+                      @if(!in_array($commande->statut, ['Non Livré', 'Retour'], true))
                       <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalChangerDateLivraison{{ $commande->id }}" title="Changer date livraison">
                         <i class="fas fa-calendar-check"></i>
                       </button>

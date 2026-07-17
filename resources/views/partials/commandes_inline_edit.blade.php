@@ -164,7 +164,7 @@ window.commandeInlineOptions = {
     var dateLivraisonCell = row.querySelector('[data-field="date_livraison"]');
     dateLivraisonCell.innerHTML = renderDateLivraison(commande.date_livraison);
     dateLivraisonCell.dataset.value = commande.date_livraison || '';
-    if (commande.statut === 'Non Livré') {
+    if (commande.statut === 'Non Livré' || commande.statut === 'Retour') {
       dateLivraisonCell.classList.add('editable-readonly');
     } else {
       dateLivraisonCell.classList.remove('editable-readonly');
@@ -350,7 +350,8 @@ window.commandeInlineOptions = {
     var row = cell.closest('tr');
     if (cell.dataset.field === 'date_livraison') {
       var statutCell = row ? row.querySelector('[data-field="statut"]') : null;
-      if (statutCell && statutCell.dataset.value === 'Non Livré') {
+      var statut = statutCell ? statutCell.dataset.value : '';
+      if (statut === 'Non Livré' || statut === 'Retour') {
         return;
       }
     }

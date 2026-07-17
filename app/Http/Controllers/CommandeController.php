@@ -62,18 +62,22 @@ class CommandeController extends Controller
             return;
         }
 
+        if ($statut === 'Retour') {
+            $validated['date_livraison'] = null;
+
+            if (isset($validated['statut']) && (!array_key_exists('date_retour', $validated) || $validated['date_retour'] === null)) {
+                $validated['date_retour'] = $commande->date_retour
+                    ? $commande->date_retour->toDateString()
+                    : now()->toDateString();
+            }
+
+            return;
+        }
+
         if (isset($validated['statut']) && $validated['statut'] === 'Livré') {
             if (!array_key_exists('date_livraison', $validated) || $validated['date_livraison'] === null) {
                 $validated['date_livraison'] = $commande->date_livraison
                     ? $commande->date_livraison->toDateString()
-                    : now()->toDateString();
-            }
-        }
-
-        if (isset($validated['statut']) && $validated['statut'] === 'Retour') {
-            if (!array_key_exists('date_retour', $validated) || $validated['date_retour'] === null) {
-                $validated['date_retour'] = $commande->date_retour
-                    ? $commande->date_retour->toDateString()
                     : now()->toDateString();
             }
         }
@@ -229,6 +233,8 @@ class CommandeController extends Controller
         if (($validated['statut'] ?? 'Non Livré') === 'Non Livré') {
             $validated['date_livraison'] = null;
             $validated['date_retour'] = null;
+        } elseif (($validated['statut'] ?? null) === 'Retour') {
+            $validated['date_livraison'] = null;
         }
 
         $commande = Commande::create($validated);
@@ -430,6 +436,7 @@ class CommandeController extends Controller
 
         $commande->update([
             'statut' => 'Retour',
+            'date_livraison' => null,
             'date_retour' => now()->toDateString(),
         ]);
 
@@ -741,6 +748,7 @@ class CommandeController extends Controller
         if ($validated['statut'] === 'Livré') {
             $updateData['date_livraison'] = now();
         } elseif ($validated['statut'] === 'Retour') {
+            $updateData['date_livraison'] = null;
             $updateData['date_retour'] = now();
         } elseif ($validated['statut'] === 'Non Livré') {
             $updateData['date_livraison'] = null;
