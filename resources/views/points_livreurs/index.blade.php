@@ -48,10 +48,13 @@
     <div class="col-12">
       <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#modalAjouterPoint"><i class="fas fa-edit"></i> Enregistrer un point</a>
       <a href="#" class="btn btn-danger"><i class="fas fa-file-export"></i> Exporter un point</a>
-      <form action="{{ route('points-livreurs.sync-recettes') }}" method="POST" class="d-inline">
+      <form action="{{ route('points-livreurs.sync-recettes') }}" method="POST" class="d-inline-flex align-items-center flex-wrap" style="gap: 8px; vertical-align: middle;">
         @csrf
-        <input type="date" name="date" value="{{ request('date', date('Y-m-d')) }}" class="form-control d-inline-block" style="width: 170px; vertical-align: middle;">
-        <button type="submit" class="btn btn-success" style="vertical-align: middle;"><i class="fas fa-sync-alt"></i> Sync recettes</button>
+        <label class="mb-0 text-muted small">Du</label>
+        <input type="date" name="date_debut" value="{{ request('date_debut', request('date', date('Y-m-d'))) }}" class="form-control" style="width: 160px;" required>
+        <label class="mb-0 text-muted small">au</label>
+        <input type="date" name="date_fin" value="{{ request('date_fin', request('date', date('Y-m-d'))) }}" class="form-control" style="width: 160px;" required>
+        <button type="submit" class="btn btn-success"><i class="fas fa-sync-alt"></i> Sync recettes</button>
       </form>
     </div>
   </div>

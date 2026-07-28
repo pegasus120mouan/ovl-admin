@@ -11,45 +11,60 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('points-livreurs:sync-recettes {--date= : Date YYYY-MM-DD (par defaut aujourd\'hui)}', function () {
-    $date = $this->option('date') ?: Carbon::today()->toDateString();
+Artisan::command('points-livreurs:sync-recettes {--date= : Date YYYY-MM-DD (par defaut aujourd\'hui)} {--date-debut= : Date debut YYYY-MM-DD} {--date-fin= : Date fin YYYY-MM-DD}', function () {
+    $dateDebut = $this->option('date-debut')
+        ?: ($this->option('date') ?: Carbon::today()->toDateString());
+    $dateFin = $this->option('date-fin')
+        ?: ($this->option('date') ?: $dateDebut);
 
-    $commandesLivrees = Commande::query()
-        ->whereDate('date_livraison', $date)
-        ->where('statut', 'Livré')
-        ->get()
-        ->groupBy('livreur_id');
-
-    $updated = 0;
-    foreach ($commandesLivrees as $livreurId => $commandes) {
-        if (!$livreurId) {
-            continue;
-        }
-
-        $recette = (int) $commandes->sum('cout_livraison');
-
-        PointsLivreur::consolidateDuplicatesForLivreurDay((int) $livreurId, $date);
-
-        $pointLivreur = PointsLivreur::forLivreurAndDate((int) $livreurId, $date);
-
-        if ($pointLivreur) {
-            $pointLivreur->recette = $recette;
-            $pointLivreur->gain_jour = $recette - ((int) ($pointLivreur->depense ?? 0));
-            $pointLivreur->save();
-        } else {
-            PointsLivreur::create([
-                'utilisateur_id' => $livreurId,
-                'recette' => $recette,
-                'depense' => 0,
-                'gain_jour' => $recette,
-                'date_commande' => $date,
-            ]);
-        }
-
-        $updated++;
+    if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+        $this->error('La date de fin doit être supérieure ou égale à la date de début.');
+        return 1;
     }
 
-    $this->info("Synchro terminee pour {$date}. Livreurs traites: {$updated}");
+    $updated = 0;
+    $jours = 0;
+
+    foreach (\Carbon\CarbonPeriod::create($dateDebut, $dateFin) as $day) {
+        $date = $day->toDateString();
+        $jours++;
+
+        $commandesLivrees = Commande::query()
+            ->whereDate('date_livraison', $date)
+            ->where('statut', 'Livré')
+            ->get()
+            ->groupBy('livreur_id');
+
+        foreach ($commandesLivrees as $livreurId => $commandes) {
+            if (!$livreurId) {
+                continue;
+            }
+
+            $recette = (int) $commandes->sum('cout_livraison');
+
+            PointsLivreur::consolidateDuplicatesForLivreurDay((int) $livreurId, $date);
+
+            $pointLivreur = PointsLivreur::forLivreurAndDate((int) $livreurId, $date);
+
+            if ($pointLivreur) {
+                $pointLivreur->recette = $recette;
+                $pointLivreur->gain_jour = $recette - ((int) ($pointLivreur->depense ?? 0));
+                $pointLivreur->save();
+            } else {
+                PointsLivreur::create([
+                    'utilisateur_id' => $livreurId,
+                    'recette' => $recette,
+                    'depense' => 0,
+                    'gain_jour' => $recette,
+                    'date_commande' => $date,
+                ]);
+            }
+
+            $updated++;
+        }
+    }
+
+    $this->info("Synchro terminee du {$dateDebut} au {$dateFin}. Jours: {$jours}. Points traites: {$updated}");
 })->purpose('Synchroniser les recettes PointsLivreur depuis les commandes livrees');
 
 Artisan::command('points-livreurs:consolidate-duplicates', function () {

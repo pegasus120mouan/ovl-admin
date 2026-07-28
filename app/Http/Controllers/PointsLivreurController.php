@@ -238,31 +238,65 @@ class PointsLivreurController extends Controller
 
     public function syncRecettes(Request $request)
     {
-        $date = $request->get('date', Carbon::today()->format('Y-m-d'));
-        
-        // Récupérer les commandes livrées du jour groupées par livreur
-        $commandesLivrees = Commande::with('livreur')
+        $validated = $request->validate([
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'date' => 'nullable|date',
+        ]);
+
+        $dateDebut = $validated['date_debut']
+            ?? $validated['date']
+            ?? Carbon::today()->toDateString();
+        $dateFin = $validated['date_fin']
+            ?? $validated['date']
+            ?? $dateDebut;
+
+        if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->back()->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $joursTraites = 0;
+        $livreursTraites = 0;
+
+        foreach (\Carbon\CarbonPeriod::create($dateDebut, $dateFin) as $day) {
+            $date = $day->toDateString();
+            $livreursTraites += $this->syncRecettesForDate($date);
+            $joursTraites++;
+        }
+
+        $message = $dateDebut === $dateFin
+            ? "Recettes synchronisées pour le {$dateDebut} ({$livreursTraites} livreur(s))."
+            : "Recettes synchronisées du {$dateDebut} au {$dateFin} ({$joursTraites} jour(s), {$livreursTraites} point(s)).";
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    private function syncRecettesForDate(string $date): int
+    {
+        $commandesLivrees = Commande::query()
             ->whereDate('date_livraison', $date)
             ->where('statut', 'Livré')
             ->get()
             ->groupBy('livreur_id');
-        
-        foreach ($commandesLivrees as $livreurId => $commandes) {
-            if (!$livreurId) continue;
 
-            $recette = $commandes->sum('cout_livraison');
+        $updated = 0;
+
+        foreach ($commandesLivrees as $livreurId => $commandes) {
+            if (!$livreurId) {
+                continue;
+            }
+
+            $recette = (int) $commandes->sum('cout_livraison');
 
             PointsLivreur::consolidateDuplicatesForLivreurDay((int) $livreurId, $date);
 
             $pointLivreur = PointsLivreur::forLivreurAndDate((int) $livreurId, $date);
-            
+
             if ($pointLivreur) {
-                // Mettre à jour la recette et recalculer le gain
                 $pointLivreur->recette = $recette;
-                $pointLivreur->gain_jour = $recette - ($pointLivreur->depense ?? 0);
+                $pointLivreur->gain_jour = $recette - ((int) ($pointLivreur->depense ?? 0));
                 $pointLivreur->save();
             } else {
-                // Créer un nouveau point livreur
                 PointsLivreur::create([
                     'utilisateur_id' => $livreurId,
                     'recette' => $recette,
@@ -271,9 +305,11 @@ class PointsLivreurController extends Controller
                     'date_commande' => $date,
                 ]);
             }
+
+            $updated++;
         }
-        
-        return redirect()->back()->with('success', 'Recettes synchronisees avec succes');
+
+        return $updated;
     }
 
     public function show(PointsLivreur $pointsLivreur)
