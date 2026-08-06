@@ -130,7 +130,7 @@
         <div class="row">
             <div class="col-lg-6 col-12">
                 <a href="{{ route('dettes-internes.index') }}" class="text-decoration-none">
-                    <div class="small-box bg-warning">
+                    <div class="small-box bg-navy">
                         <div class="inner">
                             <h3>{{ number_format($totalResteDettesInternes ?? 0, 0, ',', ' ') }}</h3>
                             <p>Dettes payables (reste total)</p>
