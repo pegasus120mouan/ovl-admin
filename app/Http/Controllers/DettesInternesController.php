@@ -164,13 +164,17 @@ class DettesInternesController extends Controller
         $dateVersement = $validated['date_versement'] ?? Carbon::today()->toDateString();
         $montant = (int) $validated['montant_versement'];
 
-        DB::transaction(function () use ($dette, $montant, $dateVersement) {
+        $montantPaye = 0;
+        $resteApres = (int) ($dette->reste ?? 0);
+
+        DB::transaction(function () use ($dette, $montant, $dateVersement, &$montantPaye, &$resteApres) {
             $reste = (int) ($dette->reste ?? 0);
             if ($reste <= 0) {
                 return;
             }
 
             $montantEffectif = min($montant, $reste);
+            $montantPaye = $montantEffectif;
 
             Versement::create([
                 'dette_id' => $dette->id,
@@ -184,8 +188,22 @@ class DettesInternesController extends Controller
             $dette->reste = max(0, (int) ($dette->montant_actuel ?? 0) - $totalVerse);
             $dette->statut = $dette->reste > 0 ? 'En cours' : 'Soldée';
             $dette->save();
+
+            $resteApres = (int) $dette->reste;
         });
 
-        return redirect()->back()->with('success', 'Versement enregistré.');
+        if ($montantPaye <= 0) {
+            return redirect()->back()->with('error', 'Aucun versement enregistré : cette dette est déjà soldée.');
+        }
+
+        $dateAffichee = Carbon::parse($dateVersement)->format('d/m/Y');
+        $montantDette = number_format((int) ($dette->fresh()->montant_actuel ?? 0), 0, ',', ' ');
+        $montantPayeFmt = number_format($montantPaye, 0, ',', ' ');
+        $resteFmt = number_format($resteApres, 0, ',', ' ');
+
+        return redirect()->back()->with(
+            'success',
+            "Versement du {$dateAffichee} : {$montantPayeFmt} XOF payés. Montant dette : {$montantDette} XOF. Reste : {$resteFmt} XOF."
+        );
     }
 }

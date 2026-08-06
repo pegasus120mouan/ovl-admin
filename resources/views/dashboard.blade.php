@@ -127,6 +127,23 @@
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-lg-6 col-12">
+                <a href="{{ route('dettes-internes.index') }}" class="text-decoration-none">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ number_format($totalResteDettesInternes ?? 0, 0, ',', ' ') }}</h3>
+                            <p>Dettes payables (reste total)</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <span class="small-box-footer">Voir les dettes <i class="fas fa-arrow-circle-right"></i></span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
         <div class="row mt-3">
             <div class="col-lg-6">
                 <div class="ovl-kpi">

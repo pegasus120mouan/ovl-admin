@@ -190,6 +190,11 @@ class AuthController extends Controller
             $repartitionClientsMoisData[] = (int) $autreClientsMois;
         }
 
+        $totalResteDettesInternes = (int) Dette::query()
+            ->where('remboursable', true)
+            ->selectRaw('COALESCE(SUM(GREATEST(0, COALESCE(montant_actuel, 0) - COALESCE(montants_payes, 0))), 0) as total')
+            ->value('total');
+
         return view('dashboard', compact(
             'nbColisRecusMois',
             'nbColisLivresMois',
@@ -202,6 +207,7 @@ class AuthController extends Controller
             'paieLivreursMois',
             'gainMois',
             'revenusTotalMois',
+            'totalResteDettesInternes',
             'repartitionGainsLivreursMoisLabels',
             'repartitionGainsLivreursMoisData',
             'repartitionDepensesLivreursMoisLabels',

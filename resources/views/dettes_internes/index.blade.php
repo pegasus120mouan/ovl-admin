@@ -35,7 +35,8 @@
                 <th>Montant</th>
                 <th>Payé</th>
                 <th>Reste</th>
-                <th>Date</th>
+                <th>Date dette</th>
+                <th>Dernier paiement</th>
                 <th>Échéance</th>
                 <th>Statut</th>
                 <th>Actions</th>
@@ -43,13 +44,24 @@
             </thead>
             <tbody>
               @forelse($dettes as $dette)
+              @php
+                $dernierVersement = ($dette->versements ?? collect())->first();
+              @endphp
               <tr>
                 <td>{{ ($dette->remboursable ?? true) ? 'Oui' : 'Non' }}</td>
                 <td>{{ $dette->nom_debiteur }}</td>
                 <td>{{ number_format($dette->montant_actuel ?? 0, 0, ',', ' ') }}</td>
-                <td>{{ number_format($dette->montants_payes ?? 0, 0, ',', ' ') }}</td>
+                <td class="text-success font-weight-bold">{{ number_format($dette->montants_payes ?? 0, 0, ',', ' ') }}</td>
                 <td><span class="font-weight-bold {{ ($dette->reste ?? 0) > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($dette->reste ?? 0, 0, ',', ' ') }}</span></td>
                 <td>{{ $dette->date_dette ? \Carbon\Carbon::parse($dette->date_dette)->format('d/m/Y') : 'N/A' }}</td>
+                <td>
+                  @if($dernierVersement)
+                    {{ \Carbon\Carbon::parse($dernierVersement->date_versement)->format('d/m/Y') }}
+                    <br><small class="text-muted">{{ number_format($dernierVersement->montant_versement ?? 0, 0, ',', ' ') }} XOF</small>
+                  @else
+                    —
+                  @endif
+                </td>
                 <td>{{ $dette->date_echeance ? \Carbon\Carbon::parse($dette->date_echeance)->format('d/m/Y') : '-' }}</td>
                 <td>
                   @if(($dette->reste ?? 0) > 0)
@@ -59,14 +71,14 @@
                   @endif
                 </td>
                 <td>
-                  <a href="#" class="btn btn-sm btn-info {{ ($dette->remboursable ?? true) ? '' : 'disabled' }}" data-toggle="modal" data-target="#modalVersement{{ $dette->id }}" {{ ($dette->remboursable ?? true) ? '' : 'aria-disabled=true tabindex=-1' }}><i class="fas fa-coins"></i></a>
+                  <a href="#" class="btn btn-sm btn-info {{ ($dette->remboursable ?? true) ? '' : 'disabled' }}" data-toggle="modal" data-target="#modalVersement{{ $dette->id }}" title="Versement / Historique" {{ ($dette->remboursable ?? true) ? '' : 'aria-disabled=true tabindex=-1' }}><i class="fas fa-coins"></i></a>
                   <a href="#" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#modalModifierDette{{ $dette->id }}"><i class="fas fa-edit"></i></a>
                   <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#modalConfirmDeleteDette" data-action="{{ route('dettes-internes.destroy', $dette->id) }}"><i class="fas fa-trash"></i></button>
                 </td>
               </tr>
               @empty
               <tr>
-                <td colspan="9" class="text-center">Aucune dette</td>
+                <td colspan="10" class="text-center">Aucune dette</td>
               </tr>
               @endforelse
             </tbody>
@@ -174,52 +186,91 @@
 </div>
 
 <div class="modal fade" id="modalVersement{{ $dette->id }}" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Versement</h5>
-        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-info text-white border-0">
+        <h5 class="modal-title">
+          <i class="fas fa-coins mr-2"></i>Versement — {{ $dette->nom_debiteur }}
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <form action="{{ route('dettes-internes.versements.store', $dette->id) }}" method="POST">
         @csrf
         <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-4">
+              <div class="border rounded p-2 text-center">
+                <div class="text-muted small">Montant dette</div>
+                <div class="font-weight-bold">{{ number_format($dette->montant_actuel ?? 0, 0, ',', ' ') }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="border rounded p-2 text-center">
+                <div class="text-muted small">Déjà payé</div>
+                <div class="font-weight-bold text-success">{{ number_format($dette->montants_payes ?? 0, 0, ',', ' ') }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="border rounded p-2 text-center">
+                <div class="text-muted small">Reste</div>
+                <div class="font-weight-bold text-danger">{{ number_format($dette->reste ?? 0, 0, ',', ' ') }}</div>
+              </div>
+            </div>
+          </div>
+
+          @if(($dette->reste ?? 0) > 0 && ($dette->remboursable ?? true))
           <div class="form-group">
             <label class="font-weight-bold">Montant à verser</label>
-            <input type="number" class="form-control" name="montant_versement" min="1" required>
-            <small class="text-muted">Reste: {{ number_format($dette->reste ?? 0, 0, ',', ' ') }}</small>
+            <input type="number" class="form-control" name="montant_versement" min="1" max="{{ (int) ($dette->reste ?? 0) }}" required>
           </div>
           <div class="form-group">
             <label class="font-weight-bold">Date versement</label>
             <input type="date" class="form-control" name="date_versement" value="{{ date('Y-m-d') }}">
           </div>
+          @endif
 
-          @if(($dette->versements ?? collect())->count())
+          @php
+            $historique = ($dette->versements ?? collect())->sortBy('date_versement')->values();
+            $cumul = 0;
+            $montantDette = (int) ($dette->montant_actuel ?? 0);
+          @endphp
+          @if($historique->count())
           <div class="mt-3">
-            <div class="font-weight-bold mb-2">Historique</div>
+            <div class="font-weight-bold mb-2">Historique des paiements</div>
             <div class="table-responsive p-0">
-              <table class="table table-sm table-striped">
+              <table class="table table-sm table-striped mb-0">
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Montant</th>
+                    <th>Payé</th>
+                    <th>Reste après</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @foreach($dette->versements as $v)
+                  @foreach($historique as $v)
+                  @php
+                    $cumul += (int) ($v->montant_versement ?? 0);
+                    $resteApresLigne = max(0, $montantDette - $cumul);
+                  @endphp
                   <tr>
                     <td>{{ $v->date_versement ? \Carbon\Carbon::parse($v->date_versement)->format('d/m/Y') : 'N/A' }}</td>
-                    <td>{{ number_format($v->montant_versement ?? 0, 0, ',', ' ') }}</td>
+                    <td class="text-success">{{ number_format($v->montant_versement ?? 0, 0, ',', ' ') }}</td>
+                    <td>{{ number_format($resteApresLigne, 0, ',', ' ') }}</td>
                   </tr>
                   @endforeach
                 </tbody>
               </table>
             </div>
           </div>
+          @else
+          <p class="text-muted mb-0 small">Aucun paiement enregistré pour cette dette.</p>
           @endif
         </div>
-        <div class="modal-footer justify-content-start">
-          <button type="submit" class="btn btn-info">Enregistrer</button>
-          <button type="button" class="btn btn-light" data-dismiss="modal">Annuler</button>
+        <div class="modal-footer border-0 justify-content-start">
+          @if(($dette->reste ?? 0) > 0 && ($dette->remboursable ?? true))
+          <button type="submit" class="btn btn-info">Enregistrer le paiement</button>
+          @endif
+          <button type="button" class="btn btn-light" data-dismiss="modal">Fermer</button>
         </div>
       </form>
     </div>
