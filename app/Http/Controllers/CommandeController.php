@@ -577,25 +577,21 @@ class CommandeController extends Controller
             'utilisateur_id' => 'required|integer',
         ]);
 
-        // Vérifier que le point n'est pas encore payé
-        $pointsPaies = Commande::where('utilisateur_id', $request->utilisateur_id)
-            ->whereDate('date_livraison', $request->date_livraison)
-            ->where('point_valide', true)
-            ->where('paiement_effectue', true)
-            ->exists();
-
-        if ($pointsPaies) {
-            return redirect()->route('commandes.points-valides')->with('error', 'Impossible de supprimer un point déjà payé!');
-        }
-
-        // Annuler la validation du point (remettre point_valide à false)
-        Commande::where('utilisateur_id', $request->utilisateur_id)
+        // Annuler la validation du point (et le paiement associé le cas échéant)
+        $count = Commande::where('utilisateur_id', $request->utilisateur_id)
             ->whereDate('date_livraison', $request->date_livraison)
             ->where('point_valide', true)
             ->update([
                 'point_valide' => false,
                 'date_validation_point' => null,
+                'paiement_effectue' => false,
+                'operateur_paiement' => null,
+                'date_paiement' => null,
             ]);
+
+        if ($count === 0) {
+            return redirect()->route('commandes.points-valides')->with('error', 'Aucun point validé trouvé à supprimer.');
+        }
 
         return redirect()->route('commandes.points-valides')->with('success', 'Point validé supprimé avec succès!');
     }

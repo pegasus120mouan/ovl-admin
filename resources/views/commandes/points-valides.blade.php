@@ -74,15 +74,9 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    @if(!$point->paiement_effectue)
-                                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#modalSupprimer{{ $loop->index }}" title="Supprimer">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    @else
-                                        <button type="button" class="btn btn-sm btn-secondary" disabled title="Impossible de supprimer un point déjà payé">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    @endif
+                                    <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#modalSupprimer{{ $loop->index }}" title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             @empty
@@ -207,6 +201,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="modal fade" id="modalSupprimer{{ $loop->index }}" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
@@ -229,13 +224,24 @@
                         <p class="mb-1"><strong>Boutique:</strong> {{ $point->boutique_nom }}</p>
                         <p class="mb-1"><strong>Date de livraison:</strong> {{ $point->date_livraison ? \Carbon\Carbon::parse($point->date_livraison)->format('d-m-Y') : 'N/A' }}</p>
                         <p class="mb-1"><strong>Nombre de colis:</strong> {{ $point->nombre_colis }} colis</p>
-                        <p class="mb-0"><strong>Montant:</strong> <span class="text-success font-weight-bold">{{ number_format($point->montant_total, 0, ',', ' ') }} XOF</span></p>
+                        <p class="mb-1"><strong>Montant:</strong> <span class="text-success font-weight-bold">{{ number_format($point->montant_total, 0, ',', ' ') }} XOF</span></p>
+                        <p class="mb-0"><strong>Paiement:</strong>
+                            @if($point->paiement_effectue)
+                                <span class="text-success">Payé{{ $point->operateur_paiement ? ' ('.$point->operateur_paiement.')' : '' }}</span>
+                            @else
+                                <span class="text-warning">En attente</span>
+                            @endif
+                        </p>
                     </div>
                     <input type="hidden" name="date_livraison" value="{{ $point->date_livraison }}">
                     <input type="hidden" name="utilisateur_id" value="{{ $point->utilisateur_id }}">
                     <div class="alert alert-warning mt-3 mb-0">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Cette action annulera la validation du point. Les commandes concernées devront être revalidées par le client.
+                        Cette action annulera la validation du point
+                        @if($point->paiement_effectue)
+                            <strong>et le paiement associé</strong>
+                        @endif.
+                        Les commandes concernées devront être revalidées par le client.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -248,6 +254,5 @@
         </div>
     </div>
 </div>
-@endif
 @endforeach
 @endsection
