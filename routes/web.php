@@ -61,6 +61,10 @@ Route::post('bilans/{client}/envoyer-sms', [BilanController::class, 'sendClientR
 
 // Points Livreurs
 Route::get('points-livreurs', [PointsLivreurController::class, 'index'])->name('points-livreurs.index');
+Route::get('points-livreurs/montant-livreurs', [PointsLivreurController::class, 'montantLivreurs'])->name('points-livreurs.montant-livreurs');
+Route::get('points-livreurs/{livreur}/situation-financiere', [PointsLivreurController::class, 'situationFinanciere'])->name('points-livreurs.situation-financiere');
+Route::post('points-livreurs/{livreur}/situation-financiere/paiement', [PointsLivreurController::class, 'effectuerPaiementSituation'])->name('points-livreurs.situation-financiere.paiement');
+Route::post('points-livreurs/{livreur}/situation-financiere/paiement-masse', [PointsLivreurController::class, 'effectuerPaiementSituationMasse'])->name('points-livreurs.situation-financiere.paiement-masse');
 Route::get('points-livreurs/liste-montants', [PointsLivreurController::class, 'listeMontants'])->name('points-livreurs.liste-montants');
 Route::get('points-livreurs/print-depot', [PointsLivreurController::class, 'printDepot'])->name('points-livreurs.print-depot');
 Route::post('points-livreurs', [PointsLivreurController::class, 'store'])->name('points-livreurs.store');
@@ -70,7 +74,11 @@ Route::post('points-livreurs/sync-recettes', [PointsLivreurController::class, 's
 
 // Points Clients
 Route::get('points-clients', [PointsClientController::class, 'index'])->name('points-clients.index');
+Route::get('points-clients/montant-clients', [PointsClientController::class, 'montantClients'])->name('points-clients.montant-clients');
 Route::get('points-clients/print', [PointsClientController::class, 'print'])->name('points-clients.print');
+Route::get('points-clients/{boutique}/situation-financiere', [PointsClientController::class, 'situationFinanciere'])->name('points-clients.situation-financiere');
+Route::post('points-clients/{boutique}/situation-financiere/paiement', [PointsClientController::class, 'effectuerPaiementSituation'])->name('points-clients.situation-financiere.paiement');
+Route::post('points-clients/{boutique}/situation-financiere/paiement-masse', [PointsClientController::class, 'effectuerPaiementSituationMasse'])->name('points-clients.situation-financiere.paiement-masse');
 
 // Engins
 Route::get('engins', [EnginController::class, 'indexWeb'])->name('engins.index');

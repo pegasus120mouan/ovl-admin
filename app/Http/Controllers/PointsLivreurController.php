@@ -9,6 +9,7 @@ use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PointsLivreurController extends Controller
@@ -69,6 +70,365 @@ class PointsLivreurController extends Controller
             'totalGain',
             'nombreLivreurs'
         ));
+    }
+
+    public function montantLivreurs(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        $dateDebut = Carbon::now()->startOfYear()->toDateString();
+        $dateFin = Carbon::today()->toDateString();
+
+        $livreurs = Utilisateur::query()
+            ->livreurs()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $livreurIds = $livreurs->pluck('id');
+
+        $montantsMois = Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereIn('livreur_id', $livreurIds)
+            ->selectRaw('livreur_id, SUM(cout_livraison) as montant, COUNT(*) as nb_colis')
+            ->groupBy('livreur_id')
+            ->get()
+            ->keyBy('livreur_id');
+
+        $commandesParLivreurJour = Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', '>=', $dateDebut)
+            ->whereDate('date_livraison', '<=', $dateFin)
+            ->whereIn('livreur_id', $livreurIds)
+            ->selectRaw('livreur_id, DATE(date_livraison) as jour, SUM(cout_global) as montant_global')
+            ->groupBy('livreur_id', 'jour')
+            ->get()
+            ->groupBy('livreur_id');
+
+        $pointsParLivreurJour = PointsLivreur::query()
+            ->whereIn('utilisateur_id', $livreurIds)
+            ->whereDate('date_commande', '>=', $dateDebut)
+            ->whereDate('date_commande', '<=', $dateFin)
+            ->selectRaw('utilisateur_id, DATE(date_commande) as jour, SUM(depense) as depense, SUM(montant_verse) as montant_verse')
+            ->groupBy('utilisateur_id', 'jour')
+            ->get()
+            ->groupBy('utilisateur_id');
+
+        $livreurs->getCollection()->transform(function ($livreur) use ($montantsMois, $commandesParLivreurJour, $pointsParLivreurJour) {
+            $stats = $montantsMois->get($livreur->id);
+            $livreur->montant_mois = (int) ($stats->montant ?? 0);
+            $livreur->nb_colis_mois = (int) ($stats->nb_colis ?? 0);
+
+            $commandesJours = $commandesParLivreurJour->get($livreur->id, collect());
+            $pointsJours = $pointsParLivreurJour->get($livreur->id, collect());
+
+            $jours = $commandesJours->pluck('jour')
+                ->merge($pointsJours->pluck('jour'))
+                ->unique();
+
+            $montantAPayer = 0;
+            $montantPaye = 0;
+
+            foreach ($jours as $jour) {
+                $montantGlobal = (int) ($commandesJours->firstWhere('jour', $jour)->montant_global ?? 0);
+                $pointJour = $pointsJours->firstWhere('jour', $jour);
+                $depense = (int) ($pointJour->depense ?? 0);
+                $montantVerse = (int) ($pointJour->montant_verse ?? 0);
+
+                $montantAPayer += max(0, $montantGlobal - $depense);
+                $montantPaye += $montantVerse;
+            }
+
+            $livreur->montant_a_payer = $montantAPayer;
+            $livreur->montant_paye = $montantPaye;
+            $livreur->reste_a_payer = max(0, $montantAPayer - $montantPaye);
+
+            return $livreur;
+        });
+
+        $livreursActifs = Utilisateur::query()->livreurs()->where('statut_compte', 1)->count();
+        $livreursInactifs = Utilisateur::query()->livreurs()->where('statut_compte', 0)->count();
+        $totalMontantMois = (int) Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->sum('cout_livraison');
+
+        return view('points_livreurs.montant_livreurs', compact(
+            'livreurs',
+            'livreursActifs',
+            'livreursInactifs',
+            'totalMontantMois'
+        ));
+    }
+
+    public function situationFinanciere(Request $request, Utilisateur $livreur)
+    {
+        if ($livreur->role !== 'livreur') {
+            abort(404);
+        }
+
+        if (!$livreur->statut_compte) {
+            return redirect()->route('points-livreurs.montant-livreurs')
+                ->with('error', 'Ce livreur est inactif.');
+        }
+
+        $dateDebut = $request->get('date_debut', Carbon::now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', Carbon::today()->toDateString());
+
+        if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->back()->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $commandesQuery = Commande::query()
+            ->with(['client.boutique'])
+            ->where('livreur_id', $livreur->id)
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', '>=', $dateDebut)
+            ->whereDate('date_livraison', '<=', $dateFin);
+
+        $nbColis = (int) (clone $commandesQuery)->count();
+
+        $pointsQuery = PointsLivreur::query()
+            ->where('utilisateur_id', $livreur->id)
+            ->whereDate('date_commande', '>=', $dateDebut)
+            ->whereDate('date_commande', '<=', $dateFin);
+
+        $commandesParJour = (clone $commandesQuery)
+            ->selectRaw('DATE(date_livraison) as jour, SUM(cout_global) as montant_global')
+            ->groupBy('jour')
+            ->pluck('montant_global', 'jour');
+
+        $depensesParJour = (clone $pointsQuery)
+            ->selectRaw('DATE(date_commande) as jour, SUM(depense) as depense')
+            ->groupBy('jour')
+            ->pluck('depense', 'jour');
+
+        $montantsVersesParJour = (clone $pointsQuery)
+            ->selectRaw('DATE(date_commande) as jour, SUM(montant_verse) as montant_verse')
+            ->groupBy('jour')
+            ->pluck('montant_verse', 'jour');
+
+        $versementsAll = $commandesParJour->keys()
+            ->merge($depensesParJour->keys())
+            ->merge($montantsVersesParJour->keys())
+            ->unique()
+            ->sortDesc()
+            ->map(function ($jour) use ($commandesParJour, $depensesParJour, $montantsVersesParJour) {
+                $montantGlobal = (int) ($commandesParJour[$jour] ?? 0);
+                $depense = (int) ($depensesParJour[$jour] ?? 0);
+                $montantVerse = (int) ($montantsVersesParJour[$jour] ?? 0);
+                $montantARemettre = max(0, $montantGlobal - $depense);
+                $montantPaye = max(0, $montantVerse);
+                $resteAPayerJour = max(0, $montantARemettre - $montantPaye);
+                $estSolde = $resteAPayerJour <= 0;
+
+                return [
+                    'date' => $jour,
+                    'montant_global' => $montantGlobal,
+                    'montant_du' => $montantARemettre,
+                    'montant_a_remettre' => $montantARemettre,
+                    'montant_verse' => $montantPaye,
+                    'reste_a_payer' => $resteAPayerJour,
+                    'est_paye' => $estSolde,
+                    'statut' => $estSolde ? 'Soldé' : 'Non Soldé',
+                ];
+            })
+            ->values();
+
+        $montantDu = (int) $versementsAll->sum('montant_a_remettre');
+        $montantPaye = (int) $versementsAll->sum('montant_verse');
+        $resteAPayer = max(0, $montantDu - $montantPaye);
+
+        $page = (int) $request->get('page', 1);
+        $perPage = 15;
+        $versementsJournaliers = new LengthAwarePaginator(
+            $versementsAll->forPage($page, $perPage)->values(),
+            $versementsAll->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $nomComplet = trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? ''));
+
+        return view('points_livreurs.situation_financiere', compact(
+            'livreur',
+            'nomComplet',
+            'dateDebut',
+            'dateFin',
+            'montantDu',
+            'montantPaye',
+            'resteAPayer',
+            'nbColis',
+            'versementsJournaliers'
+        ));
+    }
+
+    public function effectuerPaiementSituation(Request $request, Utilisateur $livreur)
+    {
+        if ($livreur->role !== 'livreur') {
+            abort(404);
+        }
+
+        if (!$livreur->statut_compte) {
+            return redirect()->route('points-livreurs.montant-livreurs')
+                ->with('error', 'Ce livreur est inactif.');
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'montant' => 'required|integer|min:1',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->toDateString();
+        $resultat = $this->solderVersementJour($livreur->id, $date, (int) $validated['montant']);
+
+        if (!$resultat['ok']) {
+            return redirect()->back()->with('error', $resultat['message']);
+        }
+
+        $dateAffichee = Carbon::parse($date)->format('d/m/Y');
+        $montantFmt = number_format($resultat['montant'], 0, ',', ' ');
+        $resteFmt = number_format($resultat['reste'], 0, ',', ' ');
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('points-livreurs.situation-financiere', array_merge(['livreur' => $livreur->id], $redirectParams))
+            ->with('success', "Versement du {$dateAffichee} : {$montantFmt} XOF enregistrés. Reste : {$resteFmt} XOF.");
+    }
+
+    public function effectuerPaiementSituationMasse(Request $request, Utilisateur $livreur)
+    {
+        if ($livreur->role !== 'livreur') {
+            abort(404);
+        }
+
+        if (!$livreur->statut_compte) {
+            return redirect()->route('points-livreurs.montant-livreurs')
+                ->with('error', 'Ce livreur est inactif.');
+        }
+
+        $validated = $request->validate([
+            'dates' => 'required|array|min:1',
+            'dates.*' => 'required|date',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $joursSoldes = 0;
+        $montantTotal = 0;
+
+        foreach (array_unique($validated['dates']) as $date) {
+            $date = Carbon::parse($date)->toDateString();
+            $resultat = $this->solderVersementJour($livreur->id, $date, null);
+
+            if ($resultat['ok']) {
+                $joursSoldes++;
+                $montantTotal += $resultat['montant'];
+            }
+        }
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        if ($joursSoldes === 0) {
+            return redirect()
+                ->route('points-livreurs.situation-financiere', array_merge(['livreur' => $livreur->id], $redirectParams))
+                ->with('error', 'Aucun versement à solder dans la sélection.');
+        }
+
+        $montantFmt = number_format($montantTotal, 0, ',', ' ');
+
+        return redirect()
+            ->route('points-livreurs.situation-financiere', array_merge(['livreur' => $livreur->id], $redirectParams))
+            ->with('success', "{$joursSoldes} jour(s) soldé(s) pour un total de {$montantFmt} XOF.");
+    }
+
+    private function solderVersementJour(int $livreurId, string $date, ?int $montantDemande): array
+    {
+        $point = $this->ensurePointRecetteForDay($livreurId, $date);
+
+        $montantGlobal = (int) Commande::query()
+            ->where('livreur_id', $livreurId)
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', $date)
+            ->sum('cout_global');
+
+        $depense = (int) ($point->depense ?? 0);
+        $montantVerse = (int) ($point->montant_verse ?? 0);
+        $montantDu = max(0, $montantGlobal - $depense);
+        $reste = max(0, $montantDu - $montantVerse);
+
+        if ($reste <= 0) {
+            return [
+                'ok' => false,
+                'montant' => 0,
+                'reste' => 0,
+                'message' => 'Ce versement est déjà entièrement enregistré.',
+            ];
+        }
+
+        $montant = $montantDemande === null ? $reste : min($montantDemande, $reste);
+        $point->montant_verse = $montantVerse + $montant;
+        $point->save();
+
+        return [
+            'ok' => true,
+            'montant' => $montant,
+            'reste' => max(0, $montantDu - (int) $point->montant_verse),
+            'message' => null,
+        ];
+    }
+
+    private function ensurePointRecetteForDay(int $livreurId, string $date): PointsLivreur
+    {
+        PointsLivreur::consolidateDuplicatesForLivreurDay($livreurId, $date);
+
+        $recette = (int) Commande::query()
+            ->where('livreur_id', $livreurId)
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', $date)
+            ->sum('cout_livraison');
+
+        $point = PointsLivreur::forLivreurAndDate($livreurId, $date);
+
+        if ($point) {
+            $point->recette = $recette;
+            $point->recalculateGain();
+            $point->save();
+
+            return $point->fresh();
+        }
+
+        return PointsLivreur::create([
+            'utilisateur_id' => $livreurId,
+            'recette' => $recette,
+            'depense' => 0,
+            'montant_verse' => 0,
+            'gain_jour' => $recette,
+            'date_commande' => $date,
+        ]);
     }
 
     public function listeMontants(Request $request)

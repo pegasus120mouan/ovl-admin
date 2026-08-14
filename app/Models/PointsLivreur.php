@@ -14,6 +14,7 @@ class PointsLivreur extends Model
         'utilisateur_id',
         'recette',
         'depense',
+        'montant_verse',
         'gain_jour',
         'date_commande',
     ];
@@ -64,6 +65,7 @@ class PointsLivreur extends Model
         $keep = $points->first();
         $keep->recette = (int) $points->sum('recette');
         $keep->depense = (int) $points->sum('depense');
+        $keep->montant_verse = (int) $points->sum('montant_verse');
         $keep->recalculateGain();
         $keep->save();
 

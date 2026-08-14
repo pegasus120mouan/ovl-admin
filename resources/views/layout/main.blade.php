@@ -447,6 +447,32 @@
               </li>
             </ul>
           </li>
+
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-wallet"></i>
+              <p>
+                Gestion Financière
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ route('points-livreurs.montant-livreurs') }}" class="nav-link">
+                  <i class="fas fa-hand-holding-usd nav-icon"></i>
+                  <p>Montant des Livreurs</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ route('points-clients.montant-clients') }}" class="nav-link">
+                  <i class="fas fa-file-invoice-dollar nav-icon"></i>
+                  <p>Montant des Clients</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+
+
           <li class="nav-item">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-users"></i>

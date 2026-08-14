@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PointsClientController extends Controller
@@ -147,5 +149,311 @@ class PointsClientController extends Controller
         $fileName = 'Points_clients_' . Carbon::parse($dateDebut)->format('d-m-Y') . '_au_' . Carbon::parse($dateFin)->format('d-m-Y') . '_' . str_replace(' ', '_', $nom) . '.pdf';
 
         return $pdf->stream($fileName);
+    }
+
+    public function montantClients(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        $dateDebut = Carbon::now()->startOfYear()->toDateString();
+        $dateFin = Carbon::today()->toDateString();
+
+        $boutiques = Boutique::query()
+            ->with('gerant')
+            ->orderBy('nom')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $boutiqueIds = $boutiques->pluck('id');
+        $clientsParBoutique = Utilisateur::query()
+            ->clients()
+            ->whereIn('boutique_id', $boutiqueIds)
+            ->get()
+            ->groupBy('boutique_id');
+
+        $clientIds = $clientsParBoutique->flatten()->pluck('id');
+
+        $statsMois = Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereIn('utilisateur_id', $clientIds)
+            ->selectRaw('utilisateur_id, SUM(cout_reel) as montant, COUNT(*) as nb_colis')
+            ->groupBy('utilisateur_id')
+            ->get()
+            ->keyBy('utilisateur_id');
+
+        $statsPeriode = Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', '>=', $dateDebut)
+            ->whereDate('date_livraison', '<=', $dateFin)
+            ->whereIn('utilisateur_id', $clientIds)
+            ->selectRaw('utilisateur_id, DATE(date_livraison) as jour, SUM(cout_reel) as montant_du, SUM(CASE WHEN COALESCE(paiement_effectue, 0) = 1 THEN cout_reel ELSE 0 END) as montant_paye')
+            ->groupBy('utilisateur_id', 'jour')
+            ->get()
+            ->groupBy('utilisateur_id');
+
+        $boutiques->getCollection()->transform(function ($boutique) use ($clientsParBoutique, $statsMois, $statsPeriode) {
+            $clients = $clientsParBoutique->get($boutique->id, collect());
+            $clientIdsBoutique = $clients->pluck('id');
+
+            $montantMois = 0;
+            $nbColisMois = 0;
+            foreach ($clientIdsBoutique as $clientId) {
+                $mois = $statsMois->get($clientId);
+                $montantMois += (int) ($mois->montant ?? 0);
+                $nbColisMois += (int) ($mois->nb_colis ?? 0);
+            }
+
+            $montantAPayer = 0;
+            $montantPaye = 0;
+            foreach ($clientIdsBoutique as $clientId) {
+                foreach ($statsPeriode->get($clientId, collect()) as $row) {
+                    $montantAPayer += (int) ($row->montant_du ?? 0);
+                    $montantPaye += (int) ($row->montant_paye ?? 0);
+                }
+            }
+
+            $boutique->nb_colis_mois = $nbColisMois;
+            $boutique->montant_mois = $montantMois;
+            $boutique->montant_a_payer = $montantAPayer;
+            $boutique->montant_paye = $montantPaye;
+            $boutique->reste_a_payer = max(0, $montantAPayer - $montantPaye);
+            $boutique->a_client = $clients->isNotEmpty();
+
+            return $boutique;
+        });
+
+        $boutiquesActives = (int) Boutique::query()->where('statut', true)->count();
+        $boutiquesInactives = (int) Boutique::query()->where('statut', false)->count();
+        $totalMontantMois = (int) Commande::query()
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereBetween('date_livraison', [$startOfMonth, $endOfMonth])
+            ->whereIn('utilisateur_id', Utilisateur::query()->clients()->pluck('id'))
+            ->sum('cout_reel');
+
+        return view('points_clients.montant_clients', compact(
+            'boutiques',
+            'boutiquesActives',
+            'boutiquesInactives',
+            'totalMontantMois'
+        ));
+    }
+
+    public function situationFinanciere(Request $request, Boutique $boutique)
+    {
+        $clientIds = $this->clientIdsForBoutique($boutique);
+
+        if (empty($clientIds)) {
+            return redirect()->route('points-clients.montant-clients')
+                ->with('error', 'Cette boutique n\'a pas de client associé.');
+        }
+
+        if (!$boutique->statut) {
+            return redirect()->route('points-clients.montant-clients')
+                ->with('error', 'Cette boutique est inactive.');
+        }
+
+        $dateDebut = $request->get('date_debut', Carbon::now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', Carbon::today()->toDateString());
+
+        if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->back()->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $commandesQuery = $this->commandesQueryForBoutique($clientIds, $dateDebut, $dateFin);
+        $nbColis = (int) (clone $commandesQuery)->count();
+
+        $paiementsParJour = (clone $commandesQuery)
+            ->selectRaw('DATE(date_livraison) as jour')
+            ->selectRaw('SUM(cout_reel) as montant_a_payer')
+            ->selectRaw('SUM(CASE WHEN COALESCE(paiement_effectue, 0) = 1 THEN cout_reel ELSE 0 END) as montant_paye')
+            ->groupBy('jour')
+            ->orderByDesc('jour')
+            ->get();
+
+        $paiementsAll = $paiementsParJour->map(function ($row) {
+            $montantAPayer = (int) ($row->montant_a_payer ?? 0);
+            $montantPaye = (int) ($row->montant_paye ?? 0);
+            $resteAPayer = max(0, $montantAPayer - $montantPaye);
+
+            return [
+                'date' => (string) $row->jour,
+                'montant_a_payer' => $montantAPayer,
+                'montant_paye' => $montantPaye,
+                'reste_a_payer' => $resteAPayer,
+                'statut' => $resteAPayer <= 0 ? 'Soldé' : 'Non Soldé',
+            ];
+        })->values();
+
+        $montantDu = (int) $paiementsAll->sum('montant_a_payer');
+        $montantPaye = (int) $paiementsAll->sum('montant_paye');
+        $resteAPayer = max(0, $montantDu - $montantPaye);
+
+        $page = (int) $request->get('page', 1);
+        $perPage = 15;
+        $paiementsJournaliers = new LengthAwarePaginator(
+            $paiementsAll->forPage($page, $perPage)->values(),
+            $paiementsAll->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('points_clients.situation_financiere', compact(
+            'boutique',
+            'dateDebut',
+            'dateFin',
+            'montantDu',
+            'montantPaye',
+            'resteAPayer',
+            'nbColis',
+            'paiementsJournaliers'
+        ));
+    }
+
+    public function effectuerPaiementSituation(Request $request, Boutique $boutique)
+    {
+        $clientIds = $this->clientIdsForBoutique($boutique);
+
+        if (empty($clientIds) || !$boutique->statut) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'operateur' => 'required|string|max:100',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->toDateString();
+        $resultat = $this->solderPaiementClientJour($clientIds, $date, $validated['operateur']);
+
+        if (!$resultat['ok']) {
+            return redirect()->back()->with('error', $resultat['message']);
+        }
+
+        $dateAffichee = Carbon::parse($date)->format('d/m/Y');
+        $montantFmt = number_format($resultat['montant'], 0, ',', ' ');
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('points-clients.situation-financiere', array_merge(['boutique' => $boutique->id], $redirectParams))
+            ->with('success', "Paiement du {$dateAffichee} : {$montantFmt} XOF enregistrés.");
+    }
+
+    public function effectuerPaiementSituationMasse(Request $request, Boutique $boutique)
+    {
+        $clientIds = $this->clientIdsForBoutique($boutique);
+
+        if (empty($clientIds) || !$boutique->statut) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'dates' => 'required|array|min:1',
+            'dates.*' => 'required|date',
+            'operateur' => 'required|string|max:100',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $joursSoldes = 0;
+        $montantTotal = 0;
+
+        foreach (array_unique($validated['dates']) as $date) {
+            $date = Carbon::parse($date)->toDateString();
+            $resultat = $this->solderPaiementClientJour($clientIds, $date, $validated['operateur']);
+
+            if ($resultat['ok']) {
+                $joursSoldes++;
+                $montantTotal += $resultat['montant'];
+            }
+        }
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        if ($joursSoldes === 0) {
+            return redirect()
+                ->route('points-clients.situation-financiere', array_merge(['boutique' => $boutique->id], $redirectParams))
+                ->with('error', 'Aucun paiement à enregistrer dans la sélection.');
+        }
+
+        $montantFmt = number_format($montantTotal, 0, ',', ' ');
+
+        return redirect()
+            ->route('points-clients.situation-financiere', array_merge(['boutique' => $boutique->id], $redirectParams))
+            ->with('success', "{$joursSoldes} jour(s) soldé(s) pour un total de {$montantFmt} XOF.");
+    }
+
+    private function clientIdsForBoutique(Boutique $boutique): array
+    {
+        return Utilisateur::query()
+            ->clients()
+            ->where('boutique_id', $boutique->id)
+            ->pluck('id')
+            ->all();
+    }
+
+    private function commandesQueryForBoutique(array $clientIds, string $dateDebut, string $dateFin)
+    {
+        return Commande::query()
+            ->whereIn('utilisateur_id', $clientIds)
+            ->where('statut', 'Livré')
+            ->whereNotNull('date_livraison')
+            ->whereDate('date_livraison', '>=', $dateDebut)
+            ->whereDate('date_livraison', '<=', $dateFin);
+    }
+
+    private function solderPaiementClientJour(array $clientIds, string $date, string $operateur): array
+    {
+        $commandes = Commande::query()
+            ->whereIn('utilisateur_id', $clientIds)
+            ->where('statut', 'Livré')
+            ->whereDate('date_livraison', $date)
+            ->where(function ($query) {
+                $query->where('paiement_effectue', false)
+                    ->orWhereNull('paiement_effectue');
+            })
+            ->get();
+
+        if ($commandes->isEmpty()) {
+            return [
+                'ok' => false,
+                'montant' => 0,
+                'message' => 'Ce jour est déjà entièrement payé.',
+            ];
+        }
+
+        $montant = (int) $commandes->sum('cout_reel');
+
+        Commande::query()
+            ->whereIn('id', $commandes->pluck('id'))
+            ->update([
+                'paiement_effectue' => true,
+                'operateur_paiement' => $operateur,
+                'date_paiement' => now(),
+            ]);
+
+        return [
+            'ok' => true,
+            'montant' => $montant,
+            'message' => null,
+        ];
     }
 }
