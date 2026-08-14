@@ -65,6 +65,7 @@ Route::get('points-livreurs/montant-livreurs', [PointsLivreurController::class, 
 Route::get('points-livreurs/{livreur}/situation-financiere', [PointsLivreurController::class, 'situationFinanciere'])->name('points-livreurs.situation-financiere');
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement', [PointsLivreurController::class, 'effectuerPaiementSituation'])->name('points-livreurs.situation-financiere.paiement');
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement-masse', [PointsLivreurController::class, 'effectuerPaiementSituationMasse'])->name('points-livreurs.situation-financiere.paiement-masse');
+Route::post('points-livreurs/{livreur}/situation-financiere/annuler-paiement', [PointsLivreurController::class, 'annulerPaiementSituation'])->name('points-livreurs.situation-financiere.annuler-paiement');
 Route::get('points-livreurs/liste-montants', [PointsLivreurController::class, 'listeMontants'])->name('points-livreurs.liste-montants');
 Route::get('points-livreurs/print-depot', [PointsLivreurController::class, 'printDepot'])->name('points-livreurs.print-depot');
 Route::post('points-livreurs', [PointsLivreurController::class, 'store'])->name('points-livreurs.store');
@@ -79,6 +80,7 @@ Route::get('points-clients/print', [PointsClientController::class, 'print'])->na
 Route::get('points-clients/{boutique}/situation-financiere', [PointsClientController::class, 'situationFinanciere'])->name('points-clients.situation-financiere');
 Route::post('points-clients/{boutique}/situation-financiere/paiement', [PointsClientController::class, 'effectuerPaiementSituation'])->name('points-clients.situation-financiere.paiement');
 Route::post('points-clients/{boutique}/situation-financiere/paiement-masse', [PointsClientController::class, 'effectuerPaiementSituationMasse'])->name('points-clients.situation-financiere.paiement-masse');
+Route::post('points-clients/{boutique}/situation-financiere/annuler-paiement', [PointsClientController::class, 'annulerPaiementSituation'])->name('points-clients.situation-financiere.annuler-paiement');
 
 // Engins
 Route::get('engins', [EnginController::class, 'indexWeb'])->name('engins.index');

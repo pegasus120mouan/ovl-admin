@@ -111,7 +111,7 @@
               <th>Payé</th>
               <th>Reste à payer</th>
               <th class="text-center">Statut</th>
-              <th class="text-center" style="width: 120px;">Action</th>
+              <th class="text-center" style="width: 180px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -147,13 +147,23 @@
                 <td class="text-center">
                   @if(($paiement['reste_a_payer'] ?? 0) > 0)
                     <button type="button"
-                            class="btn btn-sm btn-success"
+                            class="btn btn-sm btn-success mb-1"
                             data-toggle="modal"
                             data-target="#modalPaiement{{ $loop->index }}"
                             title="Effectuer le paiement">
                       <i class="fas fa-check mr-1"></i> Payé
                     </button>
-                  @else
+                  @endif
+                  @if(($paiement['montant_paye'] ?? 0) > 0)
+                    <button type="button"
+                            class="btn btn-sm btn-danger mb-1"
+                            data-toggle="modal"
+                            data-target="#modalAnnulerPaiement{{ $loop->index }}"
+                            title="Annuler le paiement">
+                      <i class="fas fa-undo mr-1"></i> Annuler
+                    </button>
+                  @endif
+                  @if(($paiement['reste_a_payer'] ?? 0) <= 0 && ($paiement['montant_paye'] ?? 0) <= 0)
                     <span class="text-muted">—</span>
                   @endif
                 </td>
@@ -220,6 +230,36 @@
               <button type="button" class="btn btn-light border" data-dismiss="modal">Annuler</button>
               <button type="submit" class="btn btn-success">
                 <i class="fas fa-check mr-1"></i> Valider le paiement
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  @if(($paiement['montant_paye'] ?? 0) > 0)
+    <div class="modal fade" id="modalAnnulerPaiement{{ $loop->index }}" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title"><i class="fas fa-undo mr-2"></i>Annuler le paiement</h5>
+            <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <form action="{{ route('points-clients.situation-financiere.annuler-paiement', $boutique) }}" method="POST">
+            @csrf
+            <input type="hidden" name="date" value="{{ $paiement['date'] }}">
+            <input type="hidden" name="date_debut" value="{{ $dateDebut }}">
+            <input type="hidden" name="date_fin" value="{{ $dateFin }}">
+            <input type="hidden" name="page" value="{{ $paiementsJournaliers->currentPage() }}">
+            <div class="modal-body">
+              <p class="mb-2">Confirmez-vous l'annulation du paiement pour le <strong>{{ $paiement['date'] ? \Carbon\Carbon::parse($paiement['date'])->format('d/m/Y') : 'N/A' }}</strong> ?</p>
+              <p class="mb-0 text-muted">Montant payé à annuler : <strong class="text-danger">{{ number_format($paiement['montant_paye'] ?? 0, 0, ',', ' ') }} XOF</strong></p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light border" data-dismiss="modal">Non</button>
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-undo mr-1"></i> Confirmer l'annulation
               </button>
             </div>
           </form>

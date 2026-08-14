@@ -363,6 +363,72 @@ class PointsLivreurController extends Controller
             ->with('success', "{$joursSoldes} jour(s) soldé(s) pour un total de {$montantFmt} XOF.");
     }
 
+    public function annulerPaiementSituation(Request $request, Utilisateur $livreur)
+    {
+        if ($livreur->role !== 'livreur') {
+            abort(404);
+        }
+
+        if (!$livreur->statut_compte) {
+            return redirect()->route('points-livreurs.montant-livreurs')
+                ->with('error', 'Ce livreur est inactif.');
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->toDateString();
+        $resultat = $this->annulerVersementJour($livreur->id, $date);
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        if (!$resultat['ok']) {
+            return redirect()
+                ->route('points-livreurs.situation-financiere', array_merge(['livreur' => $livreur->id], $redirectParams))
+                ->with('error', $resultat['message']);
+        }
+
+        $dateAffichee = Carbon::parse($date)->format('d/m/Y');
+        $montantFmt = number_format($resultat['montant'], 0, ',', ' ');
+
+        return redirect()
+            ->route('points-livreurs.situation-financiere', array_merge(['livreur' => $livreur->id], $redirectParams))
+            ->with('success', "Paiement du {$dateAffichee} annulé ({$montantFmt} XOF).");
+    }
+
+    private function annulerVersementJour(int $livreurId, string $date): array
+    {
+        PointsLivreur::consolidateDuplicatesForLivreurDay($livreurId, $date);
+
+        $point = PointsLivreur::forLivreurAndDate($livreurId, $date);
+
+        if (!$point || (int) ($point->montant_verse ?? 0) <= 0) {
+            return [
+                'ok' => false,
+                'montant' => 0,
+                'message' => 'Aucun paiement à annuler pour ce jour.',
+            ];
+        }
+
+        $montantAnnule = (int) $point->montant_verse;
+        $point->montant_verse = 0;
+        $point->save();
+
+        return [
+            'ok' => true,
+            'montant' => $montantAnnule,
+            'message' => null,
+        ];
+    }
+
     private function solderVersementJour(int $livreurId, string $date, ?int $montantDemande): array
     {
         $point = $this->ensurePointRecetteForDay($livreurId, $date);

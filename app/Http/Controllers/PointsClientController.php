@@ -401,6 +401,44 @@ class PointsClientController extends Controller
             ->with('success', "{$joursSoldes} jour(s) soldé(s) pour un total de {$montantFmt} XOF.");
     }
 
+    public function annulerPaiementSituation(Request $request, Boutique $boutique)
+    {
+        $clientIds = $this->clientIdsForBoutique($boutique);
+
+        if (empty($clientIds) || !$boutique->statut) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->toDateString();
+        $resultat = $this->annulerPaiementClientJour($clientIds, $date);
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        if (!$resultat['ok']) {
+            return redirect()
+                ->route('points-clients.situation-financiere', array_merge(['boutique' => $boutique->id], $redirectParams))
+                ->with('error', $resultat['message']);
+        }
+
+        $dateAffichee = Carbon::parse($date)->format('d/m/Y');
+        $montantFmt = number_format($resultat['montant'], 0, ',', ' ');
+
+        return redirect()
+            ->route('points-clients.situation-financiere', array_merge(['boutique' => $boutique->id], $redirectParams))
+            ->with('success', "Paiement du {$dateAffichee} annulé ({$montantFmt} XOF).");
+    }
+
     private function clientIdsForBoutique(Boutique $boutique): array
     {
         return Utilisateur::query()
@@ -448,6 +486,40 @@ class PointsClientController extends Controller
                 'paiement_effectue' => true,
                 'operateur_paiement' => $operateur,
                 'date_paiement' => now(),
+            ]);
+
+        return [
+            'ok' => true,
+            'montant' => $montant,
+            'message' => null,
+        ];
+    }
+
+    private function annulerPaiementClientJour(array $clientIds, string $date): array
+    {
+        $commandes = Commande::query()
+            ->whereIn('utilisateur_id', $clientIds)
+            ->where('statut', 'Livré')
+            ->whereDate('date_livraison', $date)
+            ->where('paiement_effectue', true)
+            ->get();
+
+        if ($commandes->isEmpty()) {
+            return [
+                'ok' => false,
+                'montant' => 0,
+                'message' => 'Aucun paiement à annuler pour ce jour.',
+            ];
+        }
+
+        $montant = (int) $commandes->sum('cout_reel');
+
+        Commande::query()
+            ->whereIn('id', $commandes->pluck('id'))
+            ->update([
+                'paiement_effectue' => false,
+                'operateur_paiement' => null,
+                'date_paiement' => null,
             ]);
 
         return [
