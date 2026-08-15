@@ -263,21 +263,7 @@ class PointsLivreurController extends Controller
         ]);
 
         $date = Carbon::parse($validated['date'])->toDateString();
-
-        if (GainJournalierTransfert::query()->whereDate('date_gain', $date)->exists()) {
-            return redirect()->back()->with('error', 'Le ' . Carbon::parse($date)->format('d/m/Y') . ' est déjà marqué comme transféré.');
-        }
-
-        $existe = PointsLivreur::query()->whereDate('date_commande', $date)->exists();
-
-        if (!$existe) {
-            return redirect()->back()->with('error', 'Aucun gain journalier trouvé pour cette date.');
-        }
-
-        GainJournalierTransfert::create([
-            'date_gain' => $date,
-            'transfere_at' => now(),
-        ]);
+        $resultat = $this->marquerGainJournalierTransfere($date);
 
         $redirectParams = array_filter([
             'date_debut' => $validated['date_debut'] ?? null,
@@ -285,11 +271,84 @@ class PointsLivreurController extends Controller
             'page' => $validated['page'] ?? null,
         ]);
 
+        if (!$resultat['ok']) {
+            return redirect()
+                ->route('points-livreurs.gain-journalier', $redirectParams)
+                ->with('error', $resultat['message']);
+        }
+
         $dateAffichee = Carbon::parse($date)->format('d/m/Y');
 
         return redirect()
             ->route('points-livreurs.gain-journalier', $redirectParams)
             ->with('success', "Le {$dateAffichee} a été marqué comme transféré.");
+    }
+
+    public function transfererGainJournalierMasse(Request $request)
+    {
+        $validated = $request->validate([
+            'dates' => 'required|array|min:1',
+            'dates.*' => 'required|date',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $joursTransferes = 0;
+
+        foreach (array_unique($validated['dates']) as $date) {
+            $date = Carbon::parse($date)->toDateString();
+            $resultat = $this->marquerGainJournalierTransfere($date);
+
+            if ($resultat['ok']) {
+                $joursTransferes++;
+            }
+        }
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        if ($joursTransferes === 0) {
+            return redirect()
+                ->route('points-livreurs.gain-journalier', $redirectParams)
+                ->with('error', 'Aucun jour à marquer comme transféré dans la sélection.');
+        }
+
+        return redirect()
+            ->route('points-livreurs.gain-journalier', $redirectParams)
+            ->with('success', "{$joursTransferes} jour(s) marqué(s) comme transféré(s).");
+    }
+
+    private function marquerGainJournalierTransfere(string $date): array
+    {
+        if (GainJournalierTransfert::query()->whereDate('date_gain', $date)->exists()) {
+            return [
+                'ok' => false,
+                'message' => 'Le ' . Carbon::parse($date)->format('d/m/Y') . ' est déjà marqué comme transféré.',
+            ];
+        }
+
+        $existe = PointsLivreur::query()->whereDate('date_commande', $date)->exists();
+
+        if (!$existe) {
+            return [
+                'ok' => false,
+                'message' => 'Aucun gain journalier trouvé pour cette date.',
+            ];
+        }
+
+        GainJournalierTransfert::create([
+            'date_gain' => $date,
+            'transfere_at' => now(),
+        ]);
+
+        return [
+            'ok' => true,
+            'message' => null,
+        ];
     }
 
     public function situationFinanciere(Request $request, Utilisateur $livreur)
