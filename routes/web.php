@@ -62,6 +62,9 @@ Route::post('bilans/{client}/envoyer-sms', [BilanController::class, 'sendClientR
 // Points Livreurs
 Route::get('points-livreurs', [PointsLivreurController::class, 'index'])->name('points-livreurs.index');
 Route::get('points-livreurs/montant-livreurs', [PointsLivreurController::class, 'montantLivreurs'])->name('points-livreurs.montant-livreurs');
+Route::get('points-livreurs/gain-journalier', [PointsLivreurController::class, 'gainJournalier'])->name('points-livreurs.gain-journalier');
+Route::post('points-livreurs/gain-journalier/transferer', [PointsLivreurController::class, 'transfererGainJournalier'])->name('points-livreurs.gain-journalier.transferer');
+Route::get('points-livreurs/gain-journalier/{date}', [PointsLivreurController::class, 'gainJournalierDetail'])->name('points-livreurs.gain-journalier.detail')->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}');
 Route::get('points-livreurs/{livreur}/situation-financiere', [PointsLivreurController::class, 'situationFinanciere'])->name('points-livreurs.situation-financiere');
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement', [PointsLivreurController::class, 'effectuerPaiementSituation'])->name('points-livreurs.situation-financiere.paiement');
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement-masse', [PointsLivreurController::class, 'effectuerPaiementSituationMasse'])->name('points-livreurs.situation-financiere.paiement-masse');

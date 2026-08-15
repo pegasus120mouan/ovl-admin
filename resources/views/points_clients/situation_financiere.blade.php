@@ -8,7 +8,6 @@
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-between align-items-start flex-wrap" style="gap: 12px;">
       <div>
-        <h4 class="mb-1 font-weight-bold">Situation financière — {{ $boutique->nom }}</h4>
         <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
           @if($boutique->statut)
             <span class="badge badge-success px-3 py-2">Actif</span>
@@ -155,13 +154,22 @@
                     </button>
                   @endif
                   @if(($paiement['montant_paye'] ?? 0) > 0)
-                    <button type="button"
-                            class="btn btn-sm btn-danger mb-1"
-                            data-toggle="modal"
-                            data-target="#modalAnnulerPaiement{{ $loop->index }}"
-                            title="Annuler le paiement">
-                      <i class="fas fa-undo mr-1"></i> Annuler
-                    </button>
+                    @if(!empty($paiement['peut_annuler']))
+                      <button type="button"
+                              class="btn btn-sm btn-danger mb-1"
+                              data-toggle="modal"
+                              data-target="#modalAnnulerPaiement{{ $loop->index }}"
+                              title="Annuler le paiement">
+                        <i class="fas fa-undo mr-1"></i> Annuler
+                      </button>
+                    @else
+                      <button type="button"
+                              class="btn btn-sm btn-secondary mb-1"
+                              disabled
+                              title="Délai d'annulation dépassé (3 jours)">
+                        <i class="fas fa-undo mr-1"></i> Annuler
+                      </button>
+                    @endif
                   @endif
                   @if(($paiement['reste_a_payer'] ?? 0) <= 0 && ($paiement['montant_paye'] ?? 0) <= 0)
                     <span class="text-muted">—</span>
@@ -238,7 +246,7 @@
     </div>
   @endif
 
-  @if(($paiement['montant_paye'] ?? 0) > 0)
+  @if(($paiement['montant_paye'] ?? 0) > 0 && !empty($paiement['peut_annuler']))
     <div class="modal fade" id="modalAnnulerPaiement{{ $loop->index }}" tabindex="-1" role="dialog">
       <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">

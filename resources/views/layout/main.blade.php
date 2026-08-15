@@ -469,6 +469,12 @@
                   <p>Montant des Clients</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="{{ route('points-livreurs.gain-journalier') }}" class="nav-link">
+                  <i class="fas fa-coins nav-icon"></i>
+                  <p>Gain Journalier</p>
+                </a>
+              </li>
             </ul>
           </li>
 

@@ -8,7 +8,6 @@
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-between align-items-start flex-wrap" style="gap: 12px;">
       <div>
-        <h4 class="mb-1 font-weight-bold">Situation financière — {{ $nomComplet }}</h4>
         <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
           <span class="badge badge-primary px-3 py-2">{{ $livreur->login }}</span>
           <span class="badge badge-secondary px-3 py-2">{{ $livreur->contact }}</span>

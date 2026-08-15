@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\CoutLivraison;
+use App\Models\GainJournalierTransfert;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
@@ -165,6 +166,130 @@ class PointsLivreurController extends Controller
             'livreursInactifs',
             'totalMontantMois'
         ));
+    }
+
+    public function gainJournalier(Request $request)
+    {
+        $dateDebut = $request->get('date_debut', Carbon::now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', Carbon::today()->toDateString());
+        $perPage = $request->integer('per_page', 15);
+        $page = $request->integer('page', 1);
+
+        if (Carbon::parse($dateFin)->lt(Carbon::parse($dateDebut))) {
+            return redirect()->route('points-livreurs.gain-journalier')
+                ->with('error', 'La date de fin doit être supérieure ou égale à la date de début.');
+        }
+
+        $jours = PointsLivreur::query()
+            ->selectRaw('DATE(date_commande) as jour, SUM(recette) as recette, SUM(depense) as depense, SUM(COALESCE(gain_jour, recette - depense)) as gain, COUNT(DISTINCT utilisateur_id) as nb_livreurs')
+            ->whereDate('date_commande', '>=', $dateDebut)
+            ->whereDate('date_commande', '<=', $dateFin)
+            ->groupByRaw('DATE(date_commande)')
+            ->orderByDesc('jour')
+            ->get();
+
+        $datesTransferees = array_flip(GainJournalierTransfert::datesTransferees($dateDebut, $dateFin));
+        $jours->transform(function ($jour) use ($datesTransferees) {
+            $dateJour = Carbon::parse($jour->jour)->toDateString();
+            $jour->transfere = array_key_exists($dateJour, $datesTransferees);
+            return $jour;
+        });
+
+        $totalRecette = (int) $jours->sum('recette');
+        $totalDepense = (int) $jours->sum('depense');
+        $totalGain = (int) $jours->sum('gain');
+        $nombreJours = $jours->count();
+
+        $gainsJournaliers = new LengthAwarePaginator(
+            $jours->forPage($page, $perPage)->values(),
+            $nombreJours,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('points_livreurs.gain_journalier', compact(
+            'gainsJournaliers',
+            'dateDebut',
+            'dateFin',
+            'totalRecette',
+            'totalDepense',
+            'totalGain',
+            'nombreJours'
+        ));
+    }
+
+    public function gainJournalierDetail(Request $request, string $date)
+    {
+        $dateDebut = $request->get('date_debut', Carbon::now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', Carbon::today()->toDateString());
+
+        $points = PointsLivreur::query()
+            ->with('livreur')
+            ->whereDate('date_commande', $date)
+            ->orderBy('id')
+            ->get();
+
+        $totalRecette = (int) $points->sum('recette');
+        $totalDepense = (int) $points->sum('depense');
+        $totalGain = (int) $points->sum(function ($point) {
+            return $point->gain_jour ?? ((int) $point->recette - (int) $point->depense);
+        });
+        $nombreLivreurs = $points->pluck('utilisateur_id')->unique()->count();
+        $transfere = GainJournalierTransfert::query()
+            ->whereDate('date_gain', $date)
+            ->exists();
+
+        return view('points_livreurs.gain_journalier_detail', compact(
+            'date',
+            'dateDebut',
+            'dateFin',
+            'points',
+            'totalRecette',
+            'totalDepense',
+            'totalGain',
+            'nombreLivreurs',
+            'transfere'
+        ));
+    }
+
+    public function transfererGainJournalier(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'date_debut' => 'nullable|date',
+            'date_fin' => 'nullable|date',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->toDateString();
+
+        if (GainJournalierTransfert::query()->whereDate('date_gain', $date)->exists()) {
+            return redirect()->back()->with('error', 'Le ' . Carbon::parse($date)->format('d/m/Y') . ' est déjà marqué comme transféré.');
+        }
+
+        $existe = PointsLivreur::query()->whereDate('date_commande', $date)->exists();
+
+        if (!$existe) {
+            return redirect()->back()->with('error', 'Aucun gain journalier trouvé pour cette date.');
+        }
+
+        GainJournalierTransfert::create([
+            'date_gain' => $date,
+            'transfere_at' => now(),
+        ]);
+
+        $redirectParams = array_filter([
+            'date_debut' => $validated['date_debut'] ?? null,
+            'date_fin' => $validated['date_fin'] ?? null,
+            'page' => $validated['page'] ?? null,
+        ]);
+
+        $dateAffichee = Carbon::parse($date)->format('d/m/Y');
+
+        return redirect()
+            ->route('points-livreurs.gain-journalier', $redirectParams)
+            ->with('success', "Le {$dateAffichee} a été marqué comme transféré.");
     }
 
     public function situationFinanciere(Request $request, Utilisateur $livreur)

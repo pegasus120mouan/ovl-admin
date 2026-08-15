@@ -271,6 +271,7 @@ class PointsClientController extends Controller
             ->selectRaw('DATE(date_livraison) as jour')
             ->selectRaw('SUM(cout_reel) as montant_a_payer')
             ->selectRaw('SUM(CASE WHEN COALESCE(paiement_effectue, 0) = 1 THEN cout_reel ELSE 0 END) as montant_paye')
+            ->selectRaw('MAX(date_paiement) as date_paiement')
             ->groupBy('jour')
             ->orderByDesc('jour')
             ->get();
@@ -279,6 +280,9 @@ class PointsClientController extends Controller
             $montantAPayer = (int) ($row->montant_a_payer ?? 0);
             $montantPaye = (int) ($row->montant_paye ?? 0);
             $resteAPayer = max(0, $montantAPayer - $montantPaye);
+            $limiteAnnulation = $row->date_paiement
+                ? Carbon::parse($row->date_paiement)->startOfDay()->addDays(3)
+                : null;
 
             return [
                 'date' => (string) $row->jour,
@@ -286,6 +290,7 @@ class PointsClientController extends Controller
                 'montant_paye' => $montantPaye,
                 'reste_a_payer' => $resteAPayer,
                 'statut' => $resteAPayer <= 0 ? 'Soldé' : 'Non Soldé',
+                'peut_annuler' => $montantPaye > 0 && $limiteAnnulation && $limiteAnnulation->gt(Carbon::today()),
             ];
         })->values();
 
@@ -509,6 +514,19 @@ class PointsClientController extends Controller
                 'ok' => false,
                 'montant' => 0,
                 'message' => 'Aucun paiement à annuler pour ce jour.',
+            ];
+        }
+
+        $datePaiement = $commandes->max('date_paiement');
+        $limiteAnnulation = $datePaiement
+            ? Carbon::parse($datePaiement)->startOfDay()->addDays(3)
+            : null;
+
+        if (!$limiteAnnulation || !$limiteAnnulation->gt(Carbon::today())) {
+            return [
+                'ok' => false,
+                'montant' => 0,
+                'message' => 'Le délai de 3 jours pour annuler ce paiement est dépassé.',
             ];
         }
 
