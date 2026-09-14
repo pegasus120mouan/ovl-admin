@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\IntegrationCommandeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,4 +18,8 @@ Route::prefix('v1')->group(function () {
     // Routes protégées (token requis)
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Intégrations externes (Geststock, etc.)
+    Route::post('/integrations/commandes', [IntegrationCommandeController::class, 'store'])
+        ->middleware('integration');
 });

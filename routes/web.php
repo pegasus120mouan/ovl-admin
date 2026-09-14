@@ -21,6 +21,7 @@ use App\Http\Controllers\PaieController;
 use App\Http\Controllers\DettesInternesController;
 use App\Http\Controllers\GestionnaireController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\SoldeSmsController;
 
 // Routes d'authentification
@@ -189,6 +190,13 @@ Route::delete('factures/{facture}/lignes/{ligne}', [FactureController::class, 'd
 Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
 Route::post('notifications', [NotificationController::class, 'store'])->name('notifications.store');
 Route::delete('notifications/{notificationNumero}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+// Intégrations API (clients externes)
+Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations.index');
+Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
+Route::put('integrations/{integration}', [IntegrationController::class, 'update'])->name('integrations.update');
+Route::post('integrations/{integration}/regenerate-token', [IntegrationController::class, 'regenerateToken'])->name('integrations.regenerate');
+Route::delete('integrations/{integration}', [IntegrationController::class, 'destroy'])->name('integrations.destroy');
 
 // Solde SMS
 Route::get('solde-sms', [SoldeSmsController::class, 'index'])->name('solde-sms.index');

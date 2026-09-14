@@ -72,6 +72,7 @@
     .main-sidebar .nav-sidebar .fa-hand-holding-usd { color: #28a745 !important; }
     .main-sidebar .nav-sidebar .fa-book { color: #ffc107 !important; }
     .main-sidebar .nav-sidebar .fa-bell { color: #17a2b8 !important; }
+    .main-sidebar .nav-sidebar .fa-plug { color: #fd7e14 !important; }
     .main-sidebar .nav-sidebar .fa-plus-square { color: #e83e8c !important; }
     .main-sidebar .nav-sidebar .fa-search { color: #007bff !important; }
     .main-sidebar .nav-sidebar .fa-comment-dots { color: #17a2b8 !important; }
@@ -640,6 +641,13 @@
             <a href="{{ route('notifications.index') }}" class="nav-link">
               <i class="nav-icon fas fa-bell"></i>
               <p>Notifications</p>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a href="{{ route('integrations.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-plug"></i>
+              <p>Intégration</p>
             </a>
           </li>
           <li class="nav-item">
