@@ -20,6 +20,8 @@ class Commande extends Model
         'cout_livraison',
         'cout_reel',
         'statut',
+        'reference_externe',
+        'integration_id',
         'date_reception',
         'date_livraison',
         'date_retour',
