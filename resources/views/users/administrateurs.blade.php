@@ -173,9 +173,13 @@
         <h5 class="modal-title text-white"><i class="fas fa-user-plus"></i> Ajouter un administrateur</h5>
         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
       </div>
-      <form action="{{ route('users.administrateurs.store') }}" method="POST">
+      <form action="{{ route('users.administrateurs.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         <div class="modal-body">
+          <div class="form-group">
+            <label>Photo</label>
+            <input type="file" class="form-control-file" name="avatar" accept="image/*">
+          </div>
           <div class="form-group">
             <label>Nom</label>
             <input type="text" class="form-control" name="nom" required>

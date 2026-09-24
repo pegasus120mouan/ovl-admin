@@ -60,6 +60,7 @@
     .main-sidebar .nav-sidebar .fa-edit { color: #6f42c1 !important; }
     .main-sidebar .nav-sidebar .fa-user-shield { color: #dc3545 !important; }
     .main-sidebar .nav-sidebar .fa-user-tie { color: #6610f2 !important; }
+    .main-sidebar .nav-sidebar .fa-handshake { color: #20c997 !important; }
     .main-sidebar .nav-sidebar .fa-lock { color: #6c757d !important; }
     .main-sidebar .nav-sidebar .fa-table { color: #20c997 !important; }
     .main-sidebar .nav-sidebar .fa-city { color: #007bff !important; }
@@ -77,7 +78,9 @@
     .main-sidebar .nav-sidebar .fa-search { color: #007bff !important; }
     .main-sidebar .nav-sidebar .fa-comment-dots { color: #17a2b8 !important; }
     .main-sidebar .nav-sidebar .fa-circle { color: #adb5bd !important; }
+    .main-sidebar .nav-sidebar .fa-map-marked-alt { color: #20c997 !important; }
   </style>
+  @stack('styles')
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -471,6 +474,12 @@
                 </a>
               </li>
               <li class="nav-item">
+                <a href="{{ route('montant-commerciaux.index') }}" class="nav-link">
+                  <i class="fas fa-handshake nav-icon"></i>
+                  <p>Montant des commerciaux</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a href="{{ route('points-livreurs.gain-journalier') }}" class="nav-link">
                   <i class="fas fa-coins nav-icon"></i>
                   <p>Gain Journalier</p>
@@ -528,6 +537,12 @@
                 <a href="{{route('gestionnaires.index')}}" class="nav-link">
                   <i class="fas fa-user-tie nav-icon"></i>
                   <p>Gestionnaires de commandes</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ route('users.commerciaux') }}" class="nav-link">
+                  <i class="fas fa-handshake nav-icon"></i>
+                  <p>Liste des commerciaux</p>
                 </a>
               </li>
               <li class="nav-item">
@@ -590,6 +605,14 @@
               <i class="nav-icon fas fa-file-contract"></i>
               <p>
                 Contrats
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ route('cartes.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-map-marked-alt"></i>
+              <p>
+                Gestion des cartes
               </p>
             </a>
           </li>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Boutique;
 use App\Models\Utilisateur;
+use App\Services\R2ImageStore;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -35,6 +36,7 @@ class GestionnaireController extends Controller
     public function create()
     {
         $boutiques = Boutique::orderBy('nom')->get();
+
         return view('gestionnaires.create', compact('boutiques'));
     }
 
@@ -66,7 +68,7 @@ class GestionnaireController extends Controller
         ];
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('gestionnaires', 'r2');
+            $data['avatar'] = app(R2ImageStore::class)->store($request->file('avatar'), 'utilisateurs');
         }
 
         $gestionnaire = Utilisateur::create($data);
@@ -89,10 +91,10 @@ class GestionnaireController extends Controller
         $gestionnaire->load('boutique');
 
         $avatarKey = $gestionnaire->avatar ?: null;
-        if (!$avatarKey || $avatarKey === 'default.jpg') {
+        if (! $avatarKey || $avatarKey === 'default.jpg') {
             $avatarKey = 'gestionnaires/gestionnaire.png';
-        } elseif (!str_contains($avatarKey, '/')) {
-            $avatarKey = 'gestionnaires/' . $avatarKey;
+        } elseif (! str_contains($avatarKey, '/')) {
+            $avatarKey = 'gestionnaires/'.$avatarKey;
         }
 
         $disk = Storage::disk('r2');
@@ -117,7 +119,7 @@ class GestionnaireController extends Controller
             'nom' => 'sometimes|required|string|max:255',
             'prenoms' => 'sometimes|required|string|max:255',
             'contact' => 'sometimes|required|string|max:15',
-            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $gestionnaire->id,
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,'.$gestionnaire->id,
             'password' => 'nullable|string|min:4',
             'boutique_id' => 'sometimes|required|exists:boutiques,id',
             'statut_compte' => 'nullable|boolean',
@@ -145,15 +147,17 @@ class GestionnaireController extends Controller
             $data['statut_compte'] = $validated['statut_compte'];
         }
 
-        if (!empty($validated['password'] ?? null)) {
+        if (! empty($validated['password'] ?? null)) {
             $data['password'] = hash('sha256', $validated['password']);
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('gestionnaires', 'r2');
+            $store = app(R2ImageStore::class);
+            $data['avatar'] = $store->store($request->file('avatar'), 'utilisateurs');
+            $store->deleteCustom($gestionnaire->avatar);
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $gestionnaire->update($data);
         }
 
@@ -183,10 +187,11 @@ class GestionnaireController extends Controller
         }
 
         $gestionnaire->update([
-            'statut_compte' => !$gestionnaire->statut_compte
+            'statut_compte' => ! $gestionnaire->statut_compte,
         ]);
 
         $status = $gestionnaire->statut_compte ? 'activé' : 'désactivé';
+
         return redirect()->back()->with('success', "Compte gestionnaire {$status} avec succès");
     }
 
@@ -201,9 +206,10 @@ class GestionnaireController extends Controller
 
         try {
             SmsService::sendPin($gestionnaire->contact, $pin, $gestionnaire->nom, $gestionnaire->prenoms);
+
             return redirect()->back()->with('success', 'Nouveau code PIN généré et envoyé par SMS');
         } catch (\Throwable $e) {
-            return redirect()->back()->with('warning', 'Nouveau code PIN généré mais l\'envoi SMS a échoué. PIN: ' . $pin);
+            return redirect()->back()->with('warning', 'Nouveau code PIN généré mais l\'envoi SMS a échoué. PIN: '.$pin);
         }
     }
 }

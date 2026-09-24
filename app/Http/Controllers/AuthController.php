@@ -9,12 +9,11 @@ use App\Models\PaieLivreur;
 use App\Models\PaiePeriode;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
-use App\Models\Versement;
 use App\Services\SmsService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
@@ -23,6 +22,7 @@ class AuthController extends Controller
         if (Session::has('utilisateur')) {
             return redirect()->route('dashboard');
         }
+
         return view('login');
     }
 
@@ -43,6 +43,10 @@ class AuthController extends Controller
         if ($utilisateur) {
             if ($utilisateur->statut_compte == 0) {
                 return back()->withErrors(['login' => 'Votre compte est désactivé. Contactez l\'administrateur.'])->withInput();
+            }
+
+            if ($utilisateur->role === 'commercial') {
+                return back()->withErrors(['login' => 'Les commerciaux doivent se connecter sur l\'espace commercial.'])->withInput();
             }
 
             Session::put('utilisateur', [
@@ -69,12 +73,13 @@ class AuthController extends Controller
     {
         Session::forget('utilisateur');
         Session::flush();
+
         return redirect()->route('login')->with('success', 'Déconnexion réussie!');
     }
 
     public function dashboard()
     {
-        if (!Session::has('utilisateur')) {
+        if (! Session::has('utilisateur')) {
             return redirect()->route('login');
         }
 
@@ -221,7 +226,7 @@ class AuthController extends Controller
 
     public function manager()
     {
-        if (!Session::has('utilisateur')) {
+        if (! Session::has('utilisateur')) {
             return redirect()->route('login');
         }
 

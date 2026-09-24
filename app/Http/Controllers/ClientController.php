@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Utilisateur;
 use App\Models\Boutique;
+use App\Models\Utilisateur;
+use App\Services\R2ImageStore;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 
@@ -12,12 +13,12 @@ class ClientController extends Controller
     public function index()
     {
         $perPage = request('per_page', 20);
-        
+
         $clients = Utilisateur::with('boutique')
             ->where('role', 'clients')
             ->paginate($perPage)
             ->withQueryString();
-        
+
         $clientsActifs = Utilisateur::where('role', 'clients')->where('statut_compte', 1)->count();
         $clientsInactifs = Utilisateur::where('role', 'clients')->where('statut_compte', 0)->count();
         $boutiquesLibres = Boutique::query()
@@ -29,7 +30,7 @@ class ClientController extends Controller
             ->withCount('utilisateurs')
             ->orderBy('nom')
             ->get();
-        
+
         return view('clients.index', compact('clients', 'boutiques', 'boutiquesLibres', 'clientsActifs', 'clientsInactifs'));
     }
 
@@ -47,10 +48,10 @@ class ClientController extends Controller
         $boutiquesTotal = Boutique::count();
 
         $avatarKey = $client->avatar ?: null;
-        if (!$avatarKey || $avatarKey === 'default.jpg') {
+        if (! $avatarKey || $avatarKey === 'default.jpg') {
             $avatarKey = 'utilisateurs/utilisateurs.png';
-        } elseif (!str_contains($avatarKey, '/')) {
-            $avatarKey = 'utilisateurs/' . $avatarKey;
+        } elseif (! str_contains($avatarKey, '/')) {
+            $avatarKey = 'utilisateurs/'.$avatarKey;
         }
 
         $disk = \Illuminate\Support\Facades\Storage::disk('r2');
@@ -75,7 +76,7 @@ class ClientController extends Controller
             'boutiquesTotal'
         ));
     }
-    
+
     public function store(Request $request)
     {
         $pin = (string) random_int(100000, 999999);
@@ -98,10 +99,10 @@ class ClientController extends Controller
         } catch (\Throwable $e) {
             // On ne bloque pas la création si l'envoi SMS échoue
         }
-        
+
         return redirect()->route('clients.index')->with('success', 'Client ajouté avec succès');
     }
-    
+
     public function update(Request $request, Utilisateur $client)
     {
         $validated = $request->validate([
@@ -132,16 +133,18 @@ class ClientController extends Controller
         if (array_key_exists('statut_compte', $validated)) {
             $data['statut_compte'] = $validated['statut_compte'];
         }
-        
-        if (!empty($validated['password'] ?? null)) {
+
+        if (! empty($validated['password'] ?? null)) {
             $data['password'] = hash('sha256', $validated['password']);
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('utilisateurs', 'r2');
+            $store = app(R2ImageStore::class);
+            $data['avatar'] = $store->store($request->file('avatar'), 'utilisateurs');
+            $store->deleteCustom($client->avatar);
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $client->update($data);
         }
 

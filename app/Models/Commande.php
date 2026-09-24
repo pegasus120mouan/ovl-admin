@@ -76,4 +76,11 @@ class Commande extends Model
     {
         return $query->whereBetween('date_reception', [$dateDebut, $dateFin]);
     }
+
+    public function scopeForCommercial($query, int $commercialId)
+    {
+        return $query->whereHas('client', function ($query) use ($commercialId) {
+            $query->where('commercial_id', $commercialId);
+        });
+    }
 }

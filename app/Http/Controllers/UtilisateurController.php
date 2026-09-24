@@ -6,6 +6,7 @@ use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\CoutLivraison;
 use App\Models\Utilisateur;
+use App\Services\R2ImageStore;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -16,6 +17,7 @@ class UtilisateurController extends Controller
     public function index()
     {
         $utilisateurs = Utilisateur::with('boutique')->get();
+
         return response()->json($utilisateurs);
     }
 
@@ -39,7 +41,7 @@ class UtilisateurController extends Controller
             $pin = (string) random_int(100000, 999999);
             $validated['code_pin'] = $pin;
         }
-        
+
         $utilisateur = Utilisateur::create($validated);
 
         if (($validated['role'] ?? null) === 'clients') {
@@ -64,7 +66,7 @@ class UtilisateurController extends Controller
             'nom' => 'sometimes|required|string|max:255',
             'prenoms' => 'sometimes|required|string|max:255',
             'contact' => 'sometimes|required|string|max:15',
-            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $utilisateur->id,
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,'.$utilisateur->id,
             'avatar' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:6',
             'role' => 'sometimes|required|string|max:255',
@@ -77,43 +79,50 @@ class UtilisateurController extends Controller
         }
 
         $utilisateur->update($validated);
+
         return response()->json($utilisateur);
     }
 
     public function destroy(Utilisateur $utilisateur)
     {
         $utilisateur->delete();
+
         return response()->json(null, 204);
     }
 
     public function getClients()
     {
         $clients = Utilisateur::clients()->with('boutique')->get();
+
         return response()->json($clients);
     }
 
     public function getLivreurs()
     {
         $livreurs = Utilisateur::livreurs()->get();
+
         return response()->json($livreurs);
     }
 
     public function getAdmins()
     {
         $admins = Utilisateur::admins()->get();
+
         return response()->json($admins);
     }
 
     public function getActifs()
     {
         $actifs = Utilisateur::actifs()->get();
+
         return response()->json($actifs);
     }
 
     public function toggleStatut(Utilisateur $utilisateur)
     {
-        $utilisateur->statut_compte = !$utilisateur->statut_compte;
+        $utilisateur->statut_compte = ! $utilisateur->statut_compte;
         $utilisateur->save();
+
         return response()->json($utilisateur);
     }
 
@@ -134,10 +143,10 @@ class UtilisateurController extends Controller
 
         if ($keyword !== '') {
             $query->where(function ($q) use ($keyword) {
-                $q->where('nom', 'like', '%' . $keyword . '%')
-                    ->orWhere('prenoms', 'like', '%' . $keyword . '%')
-                    ->orWhere('contact', 'like', '%' . $keyword . '%')
-                    ->orWhere('login', 'like', '%' . $keyword . '%');
+                $q->where('nom', 'like', '%'.$keyword.'%')
+                    ->orWhere('prenoms', 'like', '%'.$keyword.'%')
+                    ->orWhere('contact', 'like', '%'.$keyword.'%')
+                    ->orWhere('login', 'like', '%'.$keyword.'%');
             });
         }
 
@@ -167,7 +176,7 @@ class UtilisateurController extends Controller
 
     public function toggleStatutWeb(Utilisateur $utilisateur)
     {
-        $utilisateur->statut_compte = !$utilisateur->statut_compte;
+        $utilisateur->statut_compte = ! $utilisateur->statut_compte;
         $utilisateur->save();
 
         return redirect()->back();
@@ -185,7 +194,7 @@ class UtilisateurController extends Controller
             ->where('contact', $validated['contact'])
             ->first();
 
-        if (!$utilisateur) {
+        if (! $utilisateur) {
             return response()->json(['message' => 'Client introuvable'], 404);
         }
 
@@ -212,7 +221,7 @@ class UtilisateurController extends Controller
             ->where('contact', $validated['contact'])
             ->first();
 
-        if (!$utilisateur) {
+        if (! $utilisateur) {
             return response()->json(['message' => 'Client introuvable'], 404);
         }
 
@@ -274,6 +283,29 @@ class UtilisateurController extends Controller
         return view('users.livreurs', compact('livreurs', 'livreursActifs', 'livreursInactifs', 'boutiquesTotal'));
     }
 
+    public function commerciaux(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+
+        $commerciaux = Utilisateur::query()
+            ->commerciaux()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $commerciauxActifs = Utilisateur::query()->commerciaux()->where('statut_compte', 1)->count();
+        $commerciauxInactifs = Utilisateur::query()->commerciaux()->where('statut_compte', 0)->count();
+        $boutiquesTotal = Boutique::count();
+
+        return view('users.commerciaux', compact(
+            'commerciaux',
+            'commerciauxActifs',
+            'commerciauxInactifs',
+            'boutiquesTotal'
+        ));
+    }
+
     public function storeAdministrateurWeb(Request $request)
     {
         $validated = $request->validate([
@@ -283,7 +315,13 @@ class UtilisateurController extends Controller
             'login' => 'required|string|max:255|unique:utilisateurs,login',
             'password' => 'required|string|min:4',
             'statut_compte' => 'nullable|boolean',
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
+
+        $avatar = 'administrateurs/admins.png';
+        if ($request->hasFile('avatar')) {
+            $avatar = app(R2ImageStore::class)->store($request->file('avatar'), 'utilisateurs');
+        }
 
         Utilisateur::create([
             'nom' => $validated['nom'],
@@ -293,7 +331,7 @@ class UtilisateurController extends Controller
             'password' => hash('sha256', $validated['password']),
             'role' => 'admin',
             'statut_compte' => $validated['statut_compte'] ?? 1,
-            'avatar' => 'administrateurs/admins.png',
+            'avatar' => $avatar,
         ]);
 
         return redirect()->route('users.administrateurs')->with('success', 'Administrateur ajouté avec succès');
@@ -319,13 +357,13 @@ class UtilisateurController extends Controller
                 ->where('code_pin', $candidate)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 $pin = $candidate;
                 break;
             }
         }
 
-        if (!$pin) {
+        if (! $pin) {
             $pin = (string) random_int(100000, 999999);
         }
 
@@ -362,10 +400,10 @@ class UtilisateurController extends Controller
         $boutiquesTotal = Boutique::count();
 
         $avatarKey = $admin->avatar ?: null;
-        if (!$avatarKey || $avatarKey === 'default.jpg') {
+        if (! $avatarKey || $avatarKey === 'default.jpg') {
             $avatarKey = 'administrateurs/admins.png';
-        } elseif (!str_contains($avatarKey, '/')) {
-            $avatarKey = 'administrateurs/' . $avatarKey;
+        } elseif (! str_contains($avatarKey, '/')) {
+            $avatarKey = 'administrateurs/'.$avatarKey;
         }
 
         $disk = Storage::disk('r2');
@@ -395,7 +433,7 @@ class UtilisateurController extends Controller
             'nom' => 'sometimes|required|string|max:255',
             'prenoms' => 'sometimes|required|string|max:255',
             'contact' => 'sometimes|required|string|max:15',
-            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $admin->id,
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,'.$admin->id,
             'password' => 'sometimes|nullable|string|min:4|confirmed',
             'statut_compte' => 'sometimes|nullable|boolean',
             'avatar' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
@@ -420,20 +458,22 @@ class UtilisateurController extends Controller
             $data['statut_compte'] = $validated['statut_compte'];
         }
 
-        if (!empty($validated['password'] ?? null)) {
+        if (! empty($validated['password'] ?? null)) {
             $data['password'] = hash('sha256', $validated['password']);
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('administrateurs', 'r2');
+            $store = app(R2ImageStore::class);
+            $data['avatar'] = $store->store($request->file('avatar'), 'utilisateurs');
+            $store->deleteCustom($admin->avatar);
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $admin->update($data);
         }
 
         $sessionUser = Session::get('utilisateur', []);
-        if (is_array($sessionUser) && !empty($sessionUser['id']) && (int) $sessionUser['id'] === (int) $admin->id) {
+        if (is_array($sessionUser) && ! empty($sessionUser['id']) && (int) $sessionUser['id'] === (int) $admin->id) {
             $sessionUser['nom'] = $admin->nom;
             $sessionUser['prenoms'] = $admin->prenoms;
             $sessionUser['login'] = $admin->login;
@@ -467,10 +507,116 @@ class UtilisateurController extends Controller
             abort(404);
         }
 
-        $admin->statut_compte = !$admin->statut_compte;
+        $admin->statut_compte = ! $admin->statut_compte;
         $admin->save();
 
         return redirect()->route('users.administrateurs');
+    }
+
+    public function storeCommercialWeb(Request $request)
+    {
+        $request->merge([
+            'code_commercial' => $request->filled('code_commercial')
+                ? strtoupper((string) $request->input('code_commercial'))
+                : null,
+        ]);
+
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'contact' => 'required|string|max:15',
+            'login' => 'required|string|max:255|unique:utilisateurs,login',
+            'code_commercial' => 'nullable|string|max:20|regex:/^[A-Za-z0-9\-]+$/|unique:utilisateurs,code_commercial',
+            'password' => 'required|string|min:4',
+            'statut_compte' => 'nullable|boolean',
+        ]);
+
+        $commercial = Utilisateur::create([
+            'nom' => $validated['nom'],
+            'prenoms' => $validated['prenoms'],
+            'contact' => $validated['contact'],
+            'login' => $validated['login'],
+            'code_commercial' => $validated['code_commercial'] ?? null,
+            'password' => hash('sha256', $validated['password']),
+            'role' => 'commercial',
+            'statut_compte' => $validated['statut_compte'] ?? 1,
+            'avatar' => 'default.jpg',
+        ]);
+
+        $commercial->assignDefaultCommercialCode();
+
+        return redirect()->route('users.commerciaux')->with('success', 'Commercial ajouté avec succès');
+    }
+
+    public function updateCommercialWeb(Request $request, Utilisateur $commercial)
+    {
+        if (($commercial->role ?? null) !== 'commercial') {
+            abort(404);
+        }
+
+        if ($request->filled('code_commercial')) {
+            $request->merge([
+                'code_commercial' => strtoupper((string) $request->input('code_commercial')),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'nom' => 'sometimes|required|string|max:255',
+            'prenoms' => 'sometimes|required|string|max:255',
+            'contact' => 'sometimes|required|string|max:15',
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,'.$commercial->id,
+            'code_commercial' => 'sometimes|required|string|max:20|regex:/^[A-Za-z0-9\-]+$/|unique:utilisateurs,code_commercial,'.$commercial->id,
+            'password' => 'sometimes|nullable|string|min:4|confirmed',
+            'statut_compte' => 'sometimes|nullable|boolean',
+            'avatar' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'redirect_to' => 'sometimes|nullable|string',
+        ]);
+
+        $data = collect($validated)->except(['password', 'avatar', 'redirect_to'])->all();
+
+        if (! empty($validated['password'] ?? null)) {
+            $data['password'] = hash('sha256', $validated['password']);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $store = app(R2ImageStore::class);
+            $data['avatar'] = $store->store($request->file('avatar'), 'utilisateurs');
+            $store->deleteCustom($commercial->avatar);
+        }
+
+        if (! empty($data)) {
+            $commercial->update($data);
+        }
+
+        $redirectTo = $request->input('redirect_to');
+        if (is_string($redirectTo) && $redirectTo !== '') {
+            return redirect()->to($redirectTo)->with('success', 'Commercial modifié avec succès');
+        }
+
+        return redirect()->route('users.commerciaux')->with('success', 'Commercial modifié avec succès');
+    }
+
+    public function destroyCommercialWeb(Utilisateur $commercial)
+    {
+        if (($commercial->role ?? null) !== 'commercial') {
+            abort(404);
+        }
+
+        $commercial->delete();
+
+        return redirect()->route('users.commerciaux')->with('success', 'Commercial supprimé avec succès');
+    }
+
+    public function toggleCommercialStatutWeb(Utilisateur $commercial)
+    {
+        if (($commercial->role ?? null) !== 'commercial') {
+            abort(404);
+        }
+
+        $commercial->statut_compte = ! $commercial->statut_compte;
+        $commercial->save();
+
+        return redirect()->route('users.commerciaux');
     }
 
     public function showLivreurWeb(Request $request, Utilisateur $livreur)
@@ -485,10 +631,10 @@ class UtilisateurController extends Controller
         $boutiquesTotal = Boutique::count();
 
         $avatarKey = $livreur->avatar ?: null;
-        if (!$avatarKey || $avatarKey === 'default.jpg') {
+        if (! $avatarKey || $avatarKey === 'default.jpg') {
             $avatarKey = 'livreurs/livreur.png';
-        } elseif (!str_contains($avatarKey, '/')) {
-            $avatarKey = 'livreurs/' . $avatarKey;
+        } elseif (! str_contains($avatarKey, '/')) {
+            $avatarKey = 'livreurs/'.$avatarKey;
         }
 
         $disk = Storage::disk('r2');
@@ -518,7 +664,7 @@ class UtilisateurController extends Controller
             'nom' => 'sometimes|required|string|max:255',
             'prenoms' => 'sometimes|required|string|max:255',
             'contact' => 'sometimes|required|string|max:15',
-            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,' . $livreur->id,
+            'login' => 'sometimes|required|string|max:255|unique:utilisateurs,login,'.$livreur->id,
             'password' => 'sometimes|nullable|string|min:4|confirmed',
             'statut_compte' => 'sometimes|nullable|boolean',
             'salaire_mensuel' => 'sometimes|nullable|integer|min:0',
@@ -547,15 +693,17 @@ class UtilisateurController extends Controller
             $data['salaire_mensuel'] = $validated['salaire_mensuel'];
         }
 
-        if (!empty($validated['password'] ?? null)) {
+        if (! empty($validated['password'] ?? null)) {
             $data['password'] = hash('sha256', $validated['password']);
         }
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('livreurs', 'r2');
+            $store = app(R2ImageStore::class);
+            $data['avatar'] = $store->store($request->file('avatar'), 'utilisateurs');
+            $store->deleteCustom($livreur->avatar);
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $livreur->update($data);
         }
 
@@ -636,7 +784,7 @@ class UtilisateurController extends Controller
             abort(404);
         }
 
-        $livreur->statut_compte = !$livreur->statut_compte;
+        $livreur->statut_compte = ! $livreur->statut_compte;
         $livreur->save();
 
         return redirect()->route('users.livreurs');

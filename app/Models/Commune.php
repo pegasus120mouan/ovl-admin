@@ -27,4 +27,9 @@ class Commune extends Model
     {
         return $this->hasMany(Prix::class, 'commune_id');
     }
+
+    public function boutiques(): HasMany
+    {
+        return $this->hasMany(Boutique::class, 'commune_id', 'commune_id');
+    }
 }

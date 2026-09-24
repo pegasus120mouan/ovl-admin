@@ -89,6 +89,7 @@
                 <th>Logo</th>
                 <th>Nom</th>
                 <th>Type articles</th>
+                <th>Commune</th>
                 <th>Gérant</th>
                 <th>Statut</th>
                 <th style="width: 140px;">Actions</th>
@@ -114,6 +115,7 @@
                 </td>
                 <td>{{ $boutique->nom }}</td>
                 <td>{{ $boutique->type_articles ?? 'N/A' }}</td>
+                <td>{{ $boutique->commune?->nom_commune ?? 'N/A' }}</td>
                 <td>
                   @if($boutique->gerant)
                     {{ $boutique->gerant->nom }} {{ $boutique->gerant->prenoms }}
@@ -158,7 +160,7 @@
               </tr>
               @empty
               <tr>
-                <td colspan="7" class="text-center">Aucune boutique trouvée</td>
+                <td colspan="8" class="text-center">Aucune boutique trouvée</td>
               </tr>
               @endforelse
             </tbody>
@@ -210,11 +212,28 @@
             <input type="text" class="form-control" name="type_articles" placeholder="Ex: vêtements, chaussures...">
           </div>
           <div class="form-group">
+            <label>Commune</label>
+            <select class="form-control" name="commune_id" required>
+              <option value="">Sélectionner une commune</option>
+              @foreach($communes as $commune)
+                <option value="{{ $commune->commune_id }}">{{ $commune->nom_commune }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group">
             <label>Statut</label>
             <select class="form-control" name="statut">
               <option value="1" selected>Actif</option>
               <option value="0">Inactif</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" class="form-control" name="latitude" step="any" min="-90" max="90" placeholder="Optionnel">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" class="form-control" name="longitude" step="any" min="-180" max="180" placeholder="Optionnel">
           </div>
           <div class="form-group">
             <label>Logo</label>
@@ -317,11 +336,28 @@
             <input type="text" class="form-control" name="type_articles" value="{{ $boutique->type_articles ?? '' }}">
           </div>
           <div class="form-group">
+            <label>Commune</label>
+            <select class="form-control" name="commune_id" required>
+              <option value="">Sélectionner une commune</option>
+              @foreach($communes as $commune)
+                <option value="{{ $commune->commune_id }}" {{ (int) $boutique->commune_id === (int) $commune->commune_id ? 'selected' : '' }}>{{ $commune->nom_commune }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group">
             <label>Statut</label>
             <select class="form-control" name="statut">
               <option value="1" {{ $boutique->statut ? 'selected' : '' }}>Actif</option>
               <option value="0" {{ !$boutique->statut ? 'selected' : '' }}>Inactif</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" class="form-control" name="latitude" value="{{ $boutique->latitude }}" step="any" min="-90" max="90" placeholder="Optionnel">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" class="form-control" name="longitude" value="{{ $boutique->longitude }}" step="any" min="-180" max="180" placeholder="Optionnel">
           </div>
         </div>
         <div class="modal-footer">

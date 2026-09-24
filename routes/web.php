@@ -1,28 +1,30 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CommandeController;
 use App\Http\Controllers\BilanController;
-use App\Http\Controllers\PointsLivreurController;
-use App\Http\Controllers\ClientController;
 use App\Http\Controllers\BoutiqueController;
-use App\Http\Controllers\CoutLivraisonController;
-use App\Http\Controllers\PointsClientController;
-use App\Http\Controllers\UtilisateurController;
+use App\Http\Controllers\CarteController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CommandeController;
+use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommuneController;
-use App\Http\Controllers\ZoneController;
-use App\Http\Controllers\PrixController;
-use App\Http\Controllers\EnginController;
-use App\Http\Controllers\TypeEnginController;
 use App\Http\Controllers\ContratController;
-use App\Http\Controllers\FactureController;
-use App\Http\Controllers\PaieController;
+use App\Http\Controllers\CoutLivraisonController;
 use App\Http\Controllers\DettesInternesController;
+use App\Http\Controllers\EnginController;
+use App\Http\Controllers\FactureController;
 use App\Http\Controllers\GestionnaireController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaieController;
+use App\Http\Controllers\PointsClientController;
+use App\Http\Controllers\PointsLivreurController;
+use App\Http\Controllers\PrixController;
 use App\Http\Controllers\SoldeSmsController;
+use App\Http\Controllers\TypeEnginController;
+use App\Http\Controllers\UtilisateurController;
+use App\Http\Controllers\ZoneController;
+use Illuminate\Support\Facades\Route;
 
 // Routes d'authentification
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
@@ -101,6 +103,12 @@ Route::post('engins/type-engins', [TypeEnginController::class, 'storeWeb'])->nam
 Route::put('engins/type-engins/{typeEngin}', [TypeEnginController::class, 'updateWeb'])->name('engins.type_engins.update');
 Route::delete('engins/type-engins/{typeEngin}', [TypeEnginController::class, 'destroyWeb'])->name('engins.type_engins.destroy');
 
+Route::get('cartes', [CarteController::class, 'index'])->name('cartes.index');
+Route::post('cartes/import', [CarteController::class, 'import'])->name('cartes.import');
+Route::post('cartes/regions', [CarteController::class, 'storeRegion'])->name('cartes.regions.store');
+Route::post('cartes/points', [CarteController::class, 'storePoint'])->name('cartes.points.store');
+Route::delete('cartes/points/{point}', [CarteController::class, 'destroyPoint'])->name('cartes.points.destroy');
+
 Route::get('cout-livraisons', [CoutLivraisonController::class, 'indexWeb'])->name('cout-livraisons.index');
 Route::post('cout-livraisons', [CoutLivraisonController::class, 'storeWeb'])->name('cout-livraisons.store');
 Route::put('cout-livraisons/{coutLivraison}', [CoutLivraisonController::class, 'updateWeb'])->name('cout-livraisons.update');
@@ -153,23 +161,38 @@ Route::patch('boutiques/{boutique}/toggle-statut', [BoutiqueController::class, '
 
 Route::get('users/administrateurs', [UtilisateurController::class, 'administrateurs'])->name('users.administrateurs');
 Route::get('users/livreurs', [UtilisateurController::class, 'livreurs'])->name('users.livreurs');
+Route::get('users/commerciaux', [UtilisateurController::class, 'commerciaux'])->name('users.commerciaux');
+Route::get('montant-commerciaux', [CommercialController::class, 'montant'])->name('montant-commerciaux.index');
+Route::put('montant-commerciaux/taux', [CommercialController::class, 'updateCommission'])->name('montant-commerciaux.taux');
+Route::get('montant-commerciaux/{commercial}', [CommercialController::class, 'situation'])->name('montant-commerciaux.show');
+Route::post('montant-commerciaux/{commercial}/bordereaux', [CommercialController::class, 'genererBordereau'])->name('montant-commerciaux.bordereaux.store');
+Route::post('montant-commerciaux/{commercial}/bordereaux/{bordereau}/paiement', [CommercialController::class, 'payerBordereau'])->name('montant-commerciaux.bordereaux.paiement');
+Route::get('montant-commerciaux/{commercial}/bordereaux/{bordereau}/print', [CommercialController::class, 'imprimerBordereau'])->name('montant-commerciaux.bordereaux.print');
+Route::delete('montant-commerciaux/{commercial}/paiements/{paiement}', [CommercialController::class, 'annulerPaiementBordereau'])->name('montant-commerciaux.paiements.destroy');
 
 Route::post('users/administrateurs', [UtilisateurController::class, 'storeAdministrateurWeb'])->name('users.administrateurs.store');
 Route::post('users/livreurs', [UtilisateurController::class, 'storeLivreurWeb'])->name('users.livreurs.store');
+Route::post('users/commerciaux', [UtilisateurController::class, 'storeCommercialWeb'])->name('users.commerciaux.store');
 
 Route::get('users/administrateurs/{admin}', [UtilisateurController::class, 'showAdministrateurWeb'])->name('users.administrateurs.show');
 
 Route::get('users/livreurs/{livreur}', [UtilisateurController::class, 'showLivreurWeb'])->name('users.livreurs.show');
+Route::get('users/commerciaux/{commercial}', [CommercialController::class, 'show'])->name('users.commerciaux.show');
+Route::post('users/commerciaux/{commercial}/commissions/paiement', [CommercialController::class, 'payerCommission'])->name('users.commerciaux.commissions.payer');
+Route::delete('users/commerciaux/{commercial}/commissions/paiement', [CommercialController::class, 'annulerPaiement'])->name('users.commerciaux.commissions.annuler');
 
 Route::get('users/livreurs/{livreur}/commandes', [UtilisateurController::class, 'commandesLivreurWeb'])->name('users.livreurs.commandes');
 
 Route::put('users/administrateurs/{admin}', [UtilisateurController::class, 'updateAdministrateurWeb'])->name('users.administrateurs.update');
 Route::put('users/livreurs/{livreur}', [UtilisateurController::class, 'updateLivreurWeb'])->name('users.livreurs.update');
+Route::put('users/commerciaux/{commercial}', [UtilisateurController::class, 'updateCommercialWeb'])->name('users.commerciaux.update');
 Route::delete('users/administrateurs/{admin}', [UtilisateurController::class, 'destroyAdministrateurWeb'])->name('users.administrateurs.destroy');
 Route::delete('users/livreurs/{livreur}', [UtilisateurController::class, 'destroyLivreurWeb'])->name('users.livreurs.destroy');
+Route::delete('users/commerciaux/{commercial}', [UtilisateurController::class, 'destroyCommercialWeb'])->name('users.commerciaux.destroy');
 
 Route::patch('users/administrateurs/{admin}/toggle-statut', [UtilisateurController::class, 'toggleAdministrateurStatutWeb'])->name('users.administrateurs.toggle-statut');
 Route::patch('users/livreurs/{livreur}/toggle-statut', [UtilisateurController::class, 'toggleLivreurStatutWeb'])->name('users.livreurs.toggle-statut');
+Route::patch('users/commerciaux/{commercial}/toggle-statut', [UtilisateurController::class, 'toggleCommercialStatutWeb'])->name('users.commerciaux.toggle-statut');
 
 Route::get('users/gestion-statuts', [UtilisateurController::class, 'gestionStatutsWeb'])->name('users.gestion-statuts');
 Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class, 'toggleStatutWeb'])->name('users.toggle-statut');

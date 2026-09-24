@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Boutique;
+use App\Models\Commune;
 use App\Models\Utilisateur;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class BoutiqueController extends Controller
 {
@@ -13,6 +17,7 @@ class BoutiqueController extends Controller
     {
         if ($request->expectsJson()) {
             $boutiques = Boutique::all();
+
             return response()->json($boutiques);
         }
 
@@ -27,18 +32,21 @@ class BoutiqueController extends Controller
         $boutiquesAvecTypeArticles = Boutique::whereNotNull('type_articles')->where('type_articles', '!=', '')->count();
 
         $boutiques = Boutique::query()
-            ->with(['gerant'])
+            ->with(['gerant', 'commune'])
             ->withCount('utilisateurs')
             ->orderBy('nom')
             ->paginate($perPage)
             ->withQueryString();
+
+        $communes = Commune::query()->orderBy('nom_commune')->get();
 
         return view('boutiques.index', compact(
             'boutiques',
             'boutiquesTotal',
             'clientsTotal',
             'boutiquesAvecLogo',
-            'boutiquesAvecTypeArticles'
+            'boutiquesAvecTypeArticles',
+            'communes'
         ));
     }
 
@@ -50,9 +58,13 @@ class BoutiqueController extends Controller
                 'logo' => 'nullable|string|max:255',
                 'type_articles' => 'nullable|string|max:255',
                 'statut' => 'sometimes|boolean',
+                'latitude' => 'sometimes|nullable|numeric|between:-90,90',
+                'longitude' => 'sometimes|nullable|numeric|between:-180,180',
+                'commune_id' => 'sometimes|nullable|integer|exists:communes,commune_id',
             ]);
 
             $boutique = Boutique::create($validated);
+
             return response()->json($boutique, 201);
         }
 
@@ -61,16 +73,22 @@ class BoutiqueController extends Controller
             'type_articles' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'statut' => 'sometimes|boolean',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'commune_id' => 'required|integer|exists:communes,commune_id',
         ]);
 
         $data = [
             'nom' => $validated['nom'],
             'type_articles' => $validated['type_articles'] ?? null,
             'statut' => array_key_exists('statut', $validated) ? (bool) $validated['statut'] : true,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'commune_id' => $validated['commune_id'],
         ];
 
         if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('boutiques', 'r2');
+            $data['logo'] = $this->storeBoutiqueLogo($request->file('logo'));
         } else {
             $data['logo'] = 'boutiques/default_boutiques.png';
         }
@@ -100,7 +118,7 @@ class BoutiqueController extends Controller
             ->get();
 
         $logoKey = $boutique->logo ?: 'boutiques/default_boutiques.png';
-        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
+        $disk = Storage::disk('r2');
 
         try {
             $logoUrl = $disk->temporaryUrl($logoKey, now()->addMinutes(30));
@@ -132,9 +150,13 @@ class BoutiqueController extends Controller
                 'logo' => 'nullable|string|max:255',
                 'type_articles' => 'nullable|string|max:255',
                 'statut' => 'sometimes|boolean',
+                'latitude' => 'sometimes|nullable|numeric|between:-90,90',
+                'longitude' => 'sometimes|nullable|numeric|between:-180,180',
+                'commune_id' => 'sometimes|nullable|integer|exists:communes,commune_id',
             ]);
 
             $boutique->update($validated);
+
             return response()->json($boutique);
         }
 
@@ -144,6 +166,9 @@ class BoutiqueController extends Controller
             'gerant_id' => 'sometimes|nullable|integer|exists:utilisateurs,id',
             'logo' => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
             'statut' => 'sometimes|boolean',
+            'latitude' => 'sometimes|nullable|numeric|between:-90,90',
+            'longitude' => 'sometimes|nullable|numeric|between:-180,180',
+            'commune_id' => 'sometimes|required|integer|exists:communes,commune_id',
         ]);
 
         $data = [];
@@ -160,11 +185,25 @@ class BoutiqueController extends Controller
             $data['statut'] = (bool) $validated['statut'];
         }
 
-        if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('boutiques', 'r2');
+        if (array_key_exists('latitude', $validated)) {
+            $data['latitude'] = $validated['latitude'];
         }
 
-        if (!empty($data)) {
+        if (array_key_exists('longitude', $validated)) {
+            $data['longitude'] = $validated['longitude'];
+        }
+
+        if (array_key_exists('commune_id', $validated)) {
+            $data['commune_id'] = $validated['commune_id'];
+        }
+
+        if ($request->hasFile('logo')) {
+            $ancienLogo = $boutique->logo;
+            $data['logo'] = $this->storeBoutiqueLogo($request->file('logo'));
+            $this->deleteBoutiqueLogo($ancienLogo);
+        }
+
+        if (! empty($data)) {
             $boutique->update($data);
         }
 
@@ -218,7 +257,7 @@ class BoutiqueController extends Controller
 
     public function toggleStatut(Boutique $boutique)
     {
-        $boutique->update(['statut' => !$boutique->statut]);
+        $boutique->update(['statut' => ! $boutique->statut]);
 
         if (request()->expectsJson()) {
             return response()->json([
@@ -240,5 +279,37 @@ class BoutiqueController extends Controller
     public function getCommandes(Boutique $boutique)
     {
         return response()->json($boutique->commandes);
+    }
+
+    private function storeBoutiqueLogo(UploadedFile $logo): string
+    {
+        try {
+            $path = $logo->store('boutiques', 'r2');
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'logo' => "Impossible d'envoyer le logo vers Cloudflare (ovl-delivery/boutiques). Vérifiez les clés API R2.",
+            ]);
+        }
+
+        if (! is_string($path) || ! str_starts_with($path, 'boutiques/')) {
+            throw ValidationException::withMessages([
+                'logo' => "L'enregistrement du logo vers Cloudflare R2 a échoué.",
+            ]);
+        }
+
+        return $path;
+    }
+
+    private function deleteBoutiqueLogo(?string $logoKey): void
+    {
+        if (! $logoKey || $logoKey === 'boutiques/default_boutiques.png') {
+            return;
+        }
+
+        try {
+            Storage::disk('r2')->delete($logoKey);
+        } catch (\Throwable) {
+            //
+        }
     }
 }

@@ -17,12 +17,14 @@ class Utilisateur extends Model
         'prenoms',
         'contact',
         'login',
+        'code_commercial',
         'avatar',
         'password',
         'code_pin',
         'api_token',
         'role',
         'boutique_id',
+        'commercial_id',
         'statut_compte',
         'salaire_mensuel',
     ];
@@ -40,6 +42,30 @@ class Utilisateur extends Model
     public function boutique(): BelongsTo
     {
         return $this->belongsTo(Boutique::class, 'boutique_id');
+    }
+
+    public function clients(): HasMany
+    {
+        return $this->hasMany(self::class, 'commercial_id')->where('role', 'clients');
+    }
+
+    public function paiementsCommissions(): HasMany
+    {
+        return $this->hasMany(PaiementCommission::class, 'commercial_id');
+    }
+
+    public function defaultCommercialCode(): string
+    {
+        return 'COM-'.str_pad((string) $this->id, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function assignDefaultCommercialCode(): void
+    {
+        if (($this->role ?? null) !== 'commercial' || filled($this->code_commercial)) {
+            return;
+        }
+
+        $this->update(['code_commercial' => $this->defaultCommercialCode()]);
     }
 
     public function commandesClient(): HasMany
@@ -85,6 +111,11 @@ class Utilisateur extends Model
     public function scopeGestionnaires($query)
     {
         return $query->where('role', 'gestionnaire');
+    }
+
+    public function scopeCommerciaux($query)
+    {
+        return $query->where('role', 'commercial');
     }
 
     public function scopeActifs($query)

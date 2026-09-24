@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Commande;
+use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +27,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFour();
 
+        Route::bind('commercial', function (string $value) {
+            return Utilisateur::query()
+                ->where('role', 'commercial')
+                ->where(function ($query) use ($value) {
+                    $query->where('id', $value)
+                        ->orWhere('code_commercial', $value);
+                })
+                ->firstOrFail();
+        });
+
         View::composer('layout.main', function ($view) {
             $commandesRecuesAujourdHui = Commande::query()
                 ->whereDate('date_reception', Carbon::today())
@@ -33,9 +45,9 @@ class AppServiceProvider extends ServiceProvider
             // Nombre de points validés non payés (groupés par client et date)
             $pointsValidesNonPayes = Commande::where('point_valide', true)
                 ->whereNotNull('date_validation_point')
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('paiement_effectue', false)
-                      ->orWhereNull('paiement_effectue');
+                        ->orWhereNull('paiement_effectue');
                 })
                 ->select('date_livraison', 'utilisateur_id', 'date_validation_point')
                 ->groupBy('date_livraison', 'utilisateur_id', 'date_validation_point')

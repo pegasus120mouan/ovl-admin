@@ -83,6 +83,8 @@
                   <option value="admin" {{ request('role') === 'admin' ? 'selected' : '' }}>Administrateurs</option>
                   <option value="livreur" {{ request('role') === 'livreur' ? 'selected' : '' }}>Livreurs</option>
                   <option value="clients" {{ request('role') === 'clients' ? 'selected' : '' }}>Clients</option>
+                  <option value="gestionnaire" {{ request('role') === 'gestionnaire' ? 'selected' : '' }}>Gestionnaires</option>
+                  <option value="commercial" {{ request('role') === 'commercial' ? 'selected' : '' }}>Commerciaux</option>
                 </select>
               </div>
 
@@ -134,14 +136,25 @@
                   <td>
                     @php
                       $role = $utilisateur->role;
-                      $roleIcon = $role === 'admin'
-                        ? 'admin.png'
-                        : ($role === 'clients'
-                          ? 'clients.png'
-                          : ($role === 'livreur' ? 'livreur.png' : null));
+                      $roleLabels = [
+                        'admin' => 'Administrateur',
+                        'livreur' => 'Livreur',
+                        'clients' => 'Client',
+                        'gestionnaire' => 'Gestionnaire',
+                        'commercial' => 'Commercial',
+                      ];
+                      $roleIcon = match ($role) {
+                        'admin' => 'admin.png',
+                        'clients' => 'clients.png',
+                        'livreur' => 'livreur.png',
+                        default => null,
+                      };
+                      $roleLabel = $roleLabels[$role] ?? ucfirst((string) $role);
                     @endphp
                     @if($roleIcon)
-                      <img src="{{ asset('img/icones/' . $roleIcon) }}" alt="{{ $role }}" title="{{ $role }}" style="width: 40px; height: 40px; object-fit: contain;">
+                      <img src="{{ asset('img/icones/' . $roleIcon) }}" alt="{{ $roleLabel }}" title="{{ $roleLabel }}" style="width: 40px; height: 40px; object-fit: contain;">
+                    @else
+                      <span class="badge badge-secondary">{{ $roleLabel }}</span>
                     @endif
                   </td>
                   <td>{{ $utilisateur->nom }}</td>
