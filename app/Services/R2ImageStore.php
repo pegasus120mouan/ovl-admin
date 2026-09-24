@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +25,13 @@ class R2ImageStore
     {
         try {
             $path = $file->store($folder, 'r2');
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::error('Échec upload Cloudflare R2', [
+                'folder' => $folder,
+                'field' => $field,
+                'exception' => $e->getMessage(),
+            ]);
+
             throw ValidationException::withMessages([
                 $field => "Impossible d'envoyer le fichier vers Cloudflare (ovl-delivery/{$folder}). Vérifiez les clés API R2.",
             ]);

@@ -72,6 +72,7 @@
           <table class="table table-striped table-hover">
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Code</th>
                 <th>Nom</th>
                 <th>Prénoms</th>
@@ -84,6 +85,33 @@
             <tbody>
               @forelse($commerciaux as $commercial)
                 <tr>
+                  <td>
+                    @php
+                      $avatarKey = $commercial->avatar ?: null;
+                      if (!$avatarKey || $avatarKey === 'default.jpg') {
+                        $avatarKey = 'utilisateurs/utilisateurs.png';
+                      } elseif (!str_contains($avatarKey, '/')) {
+                        $avatarKey = 'utilisateurs/' . $avatarKey;
+                      }
+
+                      $avatarUrl = asset('img/logo/logo.png');
+                      try {
+                        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
+                        $avatarUrl = method_exists($disk, 'temporaryUrl')
+                          ? $disk->temporaryUrl($avatarKey, now()->addMinutes(30))
+                          : $disk->url($avatarKey);
+                      } catch (\Throwable $e) {
+                        try {
+                          $avatarUrl = \Illuminate\Support\Facades\Storage::disk('r2')->url($avatarKey);
+                        } catch (\Throwable $e) {
+                          //
+                        }
+                      }
+                    @endphp
+                    <a href="{{ route('users.commerciaux.show', $commercial->code_commercial ?: $commercial) }}">
+                      <img src="{{ $avatarUrl }}" alt="Photo {{ $commercial->prenoms }} {{ $commercial->nom }}" class="img-circle" style="width: 40px; height: 40px; object-fit: cover;" />
+                    </a>
+                  </td>
                   <td>
                     <a href="{{ route('users.commerciaux.show', $commercial->code_commercial ?: $commercial) }}" class="font-weight-bold">
                       {{ $commercial->code_commercial ?: $commercial->defaultCommercialCode() }}
@@ -134,7 +162,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="7" class="text-center">Aucun commercial trouvé</td>
+                  <td colspan="8" class="text-center">Aucun commercial trouvé</td>
                 </tr>
               @endforelse
             </tbody>

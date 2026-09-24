@@ -238,10 +238,13 @@ class CommercialManagementTest extends TestCase
     public function test_commerciaux_list_shows_clickable_code(): void
     {
         $commercial = $this->createCommercial();
+        Storage::fake('r2');
 
         $this->get('/users/commerciaux')
             ->assertOk()
+            ->assertSee('Photo')
             ->assertSee('COM-001')
+            ->assertSee('Photo '.$commercial->prenoms.' '.$commercial->nom, false)
             ->assertSee(route('users.commerciaux.show', $commercial->code_commercial), false);
     }
 
