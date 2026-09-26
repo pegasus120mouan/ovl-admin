@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\Commission;
+use App\Models\ObjectifCommercial;
 use App\Models\PaiementCommission;
 use App\Models\Utilisateur;
 use Illuminate\Database\Schema\Blueprint;
@@ -22,6 +23,7 @@ class CommercialManagementTest extends TestCase
         Schema::dropIfExists('bordereau_commission_colis');
         Schema::dropIfExists('paiements_commissions');
         Schema::dropIfExists('bordereaux_commissions');
+        Schema::dropIfExists('objectifs_commerciaux');
         Schema::dropIfExists('commissions');
         Schema::dropIfExists('commandes');
         Schema::dropIfExists('reclamations');
@@ -68,6 +70,13 @@ class CommercialManagementTest extends TestCase
         Schema::create('reclamations', function (Blueprint $table) {
             $table->id();
             $table->string('statut')->nullable();
+        });
+
+        Schema::create('objectifs_commerciaux', function (Blueprint $table) {
+            $table->id();
+            $table->date('periode');
+            $table->integer('montant')->default(0);
+            $table->unique('periode');
         });
 
         Schema::create('commissions', function (Blueprint $table) {
@@ -294,6 +303,56 @@ class CommercialManagementTest extends TestCase
         $commercial->refresh();
         $this->assertStringStartsWith('utilisateurs/', $commercial->avatar);
         Storage::disk('r2')->assertExists($commercial->avatar);
+    }
+
+    public function test_admin_can_set_one_monthly_objective_for_all_commercials(): void
+    {
+        $this->createCommercial();
+
+        $this->put('/montant-commerciaux/objectif', [
+            'mois' => '2026-09',
+            'montant' => 500000,
+        ])->assertRedirect(route('montant-commerciaux.index', ['mois' => '2026-09']));
+
+        $this->assertTrue(
+            ObjectifCommercial::query()
+                ->whereDate('periode', '2026-09-01')
+                ->where('montant', 500000)
+                ->exists()
+        );
+
+        $this->put('/montant-commerciaux/objectif', [
+            'mois' => '2026-09',
+            'montant' => 600000,
+        ])->assertRedirect(route('montant-commerciaux.index', ['mois' => '2026-09']));
+
+        $this->assertSame(1, ObjectifCommercial::query()->whereDate('periode', '2026-09-01')->count());
+
+        $this->put('/montant-commerciaux/objectif', [
+            'mois' => '2026-10',
+            'montant' => 800000,
+        ])->assertRedirect(route('montant-commerciaux.index', ['mois' => '2026-10']));
+
+        $this->assertSame(2, ObjectifCommercial::query()->count());
+
+        $this->get('/montant-commerciaux?mois=2026-09')
+            ->assertOk()
+            ->assertSee('Objectif du mois (colis livrés)')
+            ->assertSee('Nombre de colis livrés à atteindre pour les clients de chaque commercial.')
+            ->assertSee('Nombre de colis')
+            ->assertSee('Septembre')
+            ->assertSee('value="600000"', false);
+
+        $this->put('/montant-commerciaux/objectif', [
+            'mois_num' => 11,
+            'annee' => 2026,
+            'montant' => 120000,
+        ])->assertRedirect(route('montant-commerciaux.index', ['mois' => '2026-11']));
+
+        $this->get('/montant-commerciaux?mois=2026-10')
+            ->assertOk()
+            ->assertSee('value="800000"', false)
+            ->assertDontSee('value="600000"', false);
     }
 
     public function test_admin_can_set_a_global_commission_rate(): void

@@ -164,6 +164,7 @@ Route::get('users/livreurs', [UtilisateurController::class, 'livreurs'])->name('
 Route::get('users/commerciaux', [UtilisateurController::class, 'commerciaux'])->name('users.commerciaux');
 Route::get('montant-commerciaux', [CommercialController::class, 'montant'])->name('montant-commerciaux.index');
 Route::put('montant-commerciaux/taux', [CommercialController::class, 'updateCommission'])->name('montant-commerciaux.taux');
+Route::put('montant-commerciaux/objectif', [CommercialController::class, 'updateObjectif'])->name('montant-commerciaux.objectif');
 Route::get('montant-commerciaux/{commercial}', [CommercialController::class, 'situation'])->name('montant-commerciaux.show');
 Route::post('montant-commerciaux/{commercial}/bordereaux', [CommercialController::class, 'genererBordereau'])->name('montant-commerciaux.bordereaux.store');
 Route::post('montant-commerciaux/{commercial}/bordereaux/{bordereau}/paiement', [CommercialController::class, 'payerBordereau'])->name('montant-commerciaux.bordereaux.paiement');

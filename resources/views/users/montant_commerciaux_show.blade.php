@@ -119,6 +119,7 @@
             <th>Montant dû</th>
             <th>Montant payé</th>
             <th>Reste à payer</th>
+            <th>Objectif</th>
           </tr>
         </thead>
         <tbody>
@@ -138,10 +139,17 @@
                   <span class="text-warning font-weight-bold">{{ number_format($ligne['reste'], 0, ',', ' ') }} FCFA</span>
                 @endif
               </td>
+              <td>
+                @if ($ligne['objectif'] === null)
+                  <span class="text-muted">—</span>
+                @else
+                  {{ $ligne['objectif'] }} colis
+                @endif
+              </td>
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="text-center text-muted py-4">Aucun montant dû</td>
+              <td colspan="7" class="text-center text-muted py-4">Aucun montant dû</td>
             </tr>
           @endforelse
         </tbody>

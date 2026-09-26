@@ -6,6 +6,7 @@ use App\Models\BordereauCommission;
 use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\Commission;
+use App\Models\ObjectifCommercial;
 use App\Models\PaiementCommission;
 use App\Models\Utilisateur;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -19,6 +20,8 @@ class CommercialController extends Controller
     public function montant(Request $request)
     {
         $regle = Commission::globale();
+        $mois = $this->moisDemande($request);
+        $periode = Carbon::createFromFormat('!Y-m', $mois)->startOfMonth();
         $commerciaux = Utilisateur::query()
             ->commerciaux()
             ->with('paiementsCommissions')
@@ -40,7 +43,27 @@ class CommercialController extends Controller
                 ->groupBy('clients.commercial_id')
                 ->pluck('base', 'commercial_id');
 
-        $commerciaux->getCollection()->transform(function (Utilisateur $commercial) use ($bases, $regle) {
+        $objectifColis = ObjectifCommercial::query()
+            ->whereDate('periode', $periode->toDateString())
+            ->value('montant');
+        $objectifColis = $objectifColis === null ? null : (int) $objectifColis;
+
+        $fin = $periode->copy()->endOfMonth();
+        $colisMois = $commercialIds->isEmpty()
+            ? collect()
+            : Commande::query()
+                ->join('utilisateurs as clients', 'clients.id', '=', 'commandes.utilisateur_id')
+                ->where('clients.role', 'clients')
+                ->whereIn('clients.commercial_id', $commercialIds)
+                ->where('commandes.statut', 'Livré')
+                ->whereNotNull('commandes.date_livraison')
+                ->whereDate('commandes.date_livraison', '>=', $periode->toDateString())
+                ->whereDate('commandes.date_livraison', '<=', $fin->toDateString())
+                ->selectRaw('clients.commercial_id, COUNT(commandes.id) as colis')
+                ->groupBy('clients.commercial_id')
+                ->pluck('colis', 'commercial_id');
+
+        $commerciaux->getCollection()->transform(function (Utilisateur $commercial) use ($bases, $regle, $colisMois) {
             $base = (int) ($bases[$commercial->id] ?? 0);
             $montantDu = $regle ? $regle->montantPourBase($base) : 0;
             $montantPaye = (int) $commercial->paiementsCommissions->sum('montant');
@@ -48,11 +71,40 @@ class CommercialController extends Controller
             $commercial->montant_du = $montantDu;
             $commercial->montant_paye = $montantPaye;
             $commercial->reste_a_payer = max(0, $montantDu - $montantPaye);
+            $commercial->colis_livres = (int) ($colisMois[$commercial->id] ?? 0);
 
             return $commercial;
         });
 
-        return view('users.montant_commerciaux', compact('commerciaux', 'regle'));
+        return view('users.montant_commerciaux', compact('commerciaux', 'regle', 'mois', 'objectifColis'));
+    }
+
+    public function updateObjectif(Request $request)
+    {
+        $validated = $request->validate([
+            'mois' => ['nullable', 'date_format:Y-m', 'required_without:mois_num'],
+            'mois_num' => ['nullable', 'integer', 'min:1', 'max:12', 'required_without:mois'],
+            'annee' => ['nullable', 'integer', 'min:2000', 'max:2100', 'required_with:mois_num'],
+            'montant' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $mois = $this->moisDemande($request);
+        $periode = Carbon::createFromFormat('!Y-m', $mois)->startOfMonth()->toDateString();
+        $montant = (int) $validated['montant'];
+
+        $objectif = ObjectifCommercial::query()->whereDate('periode', $periode)->first();
+        if ($objectif) {
+            $objectif->update(['montant' => $montant]);
+        } else {
+            ObjectifCommercial::query()->create([
+                'periode' => $periode,
+                'montant' => $montant,
+            ]);
+        }
+
+        return redirect()
+            ->route('montant-commerciaux.index', ['mois' => $mois])
+            ->with('success', 'Objectif de colis livrés enregistré pour tous les commerciaux.');
     }
 
     public function situation(Utilisateur $commercial)
@@ -97,6 +149,36 @@ class CommercialController extends Controller
             })
             ->sortKeysDesc()
             ->values();
+
+        $objectifs = ObjectifCommercial::query()
+            ->get()
+            ->keyBy(fn (ObjectifCommercial $objectif) => $objectif->periode->format('Y-m-01'));
+
+        $montantsMensuels = $montantsMensuels->map(function (array $ligne) use ($objectifs) {
+            $ligne['objectif'] = $objectifs->has($ligne['periode'])
+                ? (int) $objectifs[$ligne['periode']]->montant
+                : null;
+
+            return $ligne;
+        });
+
+        foreach ($objectifs as $periode => $objectif) {
+            if ($montantsMensuels->contains(fn (array $ligne) => $ligne['periode'] === $periode)) {
+                continue;
+            }
+
+            $montantsMensuels->push([
+                'periode' => $periode,
+                'colis' => 0,
+                'base' => 0,
+                'montant_du' => 0,
+                'montant_paye' => 0,
+                'reste' => 0,
+                'objectif' => (int) $objectif->montant,
+            ]);
+        }
+
+        $montantsMensuels = $montantsMensuels->sortByDesc('periode')->values();
 
         $stats = [
             'montant_du' => (int) $montantsMensuels->sum('montant_du'),
@@ -375,6 +457,22 @@ class CommercialController extends Controller
     private function ensureBordereau(Utilisateur $commercial, BordereauCommission $bordereau): void
     {
         abort_unless((int) $bordereau->commercial_id === (int) $commercial->id, 404);
+    }
+
+    private function moisDemande(Request $request): string
+    {
+        $mois = (string) $request->input('mois', '');
+        if (preg_match('/^\d{4}-\d{2}$/', $mois) === 1) {
+            return $mois;
+        }
+
+        $annee = (int) $request->input('annee');
+        $numero = (int) $request->input('mois_num');
+        if ($annee >= 2000 && $annee <= 2100 && $numero >= 1 && $numero <= 12) {
+            return sprintf('%04d-%02d', $annee, $numero);
+        }
+
+        return now()->format('Y-m');
     }
 
     private function ensureCommercial(Utilisateur $commercial): void
