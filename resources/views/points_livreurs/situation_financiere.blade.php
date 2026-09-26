@@ -18,9 +18,14 @@
           @endif
         </div>
       </div>
-      <a href="{{ route('points-livreurs.montant-livreurs') }}" class="btn btn-light border">
-        <i class="fas fa-arrow-left mr-1"></i> Retour
-      </a>
+      <div class="d-flex flex-wrap" style="gap: 8px;">
+        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modalCreerDette">
+          <i class="fas fa-file-invoice-dollar mr-1"></i> Créer une dette
+        </button>
+        <a href="{{ route('points-livreurs.montant-livreurs') }}" class="btn btn-light border">
+          <i class="fas fa-arrow-left mr-1"></i> Retour
+        </a>
+      </div>
     </div>
   </div>
 
@@ -51,7 +56,7 @@
   </div>
 
   <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-left-danger shadow-sm h-100" style="border-left: 4px solid #dc3545;">
         <div class="card-body">
           <div class="text-danger font-weight-bold mb-1">Montant dû</div>
@@ -60,7 +65,7 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-left-success shadow-sm h-100" style="border-left: 4px solid #28a745;">
         <div class="card-body">
           <div class="text-success font-weight-bold mb-1">Montant payé</div>
@@ -69,7 +74,16 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100" style="border-left: 4px solid #6f42c1;">
+        <div class="card-body">
+          <div class="font-weight-bold mb-1" style="color: #6f42c1;">Dettes</div>
+          <h3 class="font-weight-bold mb-2">{{ number_format($totalDettesReste, 0, ',', ' ') }} XOF</h3>
+          <small class="text-muted">Pertes et prêts restant à rembourser</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
       <div class="card border-left-warning shadow-sm h-100" style="border-left: 4px solid #ffc107;">
         <div class="card-body">
           <div class="text-warning font-weight-bold mb-1">Reste à payer</div>
@@ -187,6 +201,104 @@
         </div>
       </div>
     @endif
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+      <h5 class="card-title mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i> Dettes du livreur</h5>
+      <span class="badge badge-light text-danger">Reste dû : {{ number_format($totalDettesReste, 0, ',', ' ') }} XOF</span>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Motif</th>
+            <th>Montant</th>
+            <th>Remboursé</th>
+            <th>Reste</th>
+            <th>Échéance</th>
+            <th class="text-center">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($dettes as $dette)
+            <tr>
+              <td>{{ $dette->date_dette ? $dette->date_dette->format('d/m/Y') : 'N/A' }}</td>
+              <td>
+                <span class="badge {{ $dette->type === 'Perte' ? 'badge-danger' : 'badge-info' }} px-2 py-1">{{ $dette->type }}</span>
+              </td>
+              <td>{{ $dette->motifs ?: '—' }}</td>
+              <td class="font-weight-bold">{{ number_format((int) $dette->montant_actuel, 0, ',', ' ') }} XOF</td>
+              <td class="text-success font-weight-bold">{{ number_format((int) $dette->montants_payes, 0, ',', ' ') }} XOF</td>
+              <td class="font-weight-bold {{ (int) $dette->reste > 0 ? 'text-danger' : 'text-muted' }}">{{ number_format((int) $dette->reste, 0, ',', ' ') }} XOF</td>
+              <td>{{ $dette->date_echeance ? $dette->date_echeance->format('d/m/Y') : '—' }}</td>
+              <td class="text-center">
+                @if((int) $dette->reste > 0)
+                  <span class="badge badge-warning px-3 py-2">En cours</span>
+                @else
+                  <span class="badge badge-success px-3 py-2">Soldée</span>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="8" class="text-center py-4 text-muted">Aucune dette pour ce livreur</td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCreerDette" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-file-invoice-dollar mr-2"></i>Créer une dette — {{ $nomComplet }}</h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <form action="{{ route('points-livreurs.dettes.store', $livreur) }}" method="POST">
+        @csrf
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="font-weight-bold">Type</label>
+            <select name="type" class="form-control" required>
+              <option value="">-- Sélectionner --</option>
+              @foreach(\App\Models\Dette::TYPES_LIVREUR as $typeDette)
+                <option value="{{ $typeDette }}" {{ old('type') === $typeDette ? 'selected' : '' }}>{{ $typeDette }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="font-weight-bold">Montant (XOF)</label>
+            <input type="number" name="montant" class="form-control" min="1" step="1" value="{{ old('montant') }}" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label class="font-weight-bold">Date de la dette</label>
+              <input type="date" name="date_dette" class="form-control" value="{{ old('date_dette', date('Y-m-d')) }}" required>
+            </div>
+            <div class="form-group col-md-6">
+              <label class="font-weight-bold">Échéance (optionnel)</label>
+              <input type="date" name="date_echeance" class="form-control" value="{{ old('date_echeance') }}">
+            </div>
+          </div>
+          <div class="form-group mb-0">
+            <label class="font-weight-bold">Motif</label>
+            <textarea name="motifs" class="form-control" rows="2" placeholder="Ex. colis perdu, avance sur salaire...">{{ old('motifs') }}</textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light border" data-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-save mr-1"></i> Enregistrer la dette
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 

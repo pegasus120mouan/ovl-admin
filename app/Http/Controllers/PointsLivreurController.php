@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Boutique;
 use App\Models\Commande;
 use App\Models\CoutLivraison;
+use App\Models\Dette;
 use App\Models\GainJournalierTransfert;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
@@ -83,6 +84,7 @@ class PointsLivreurController extends Controller
 
         $livreurs = Utilisateur::query()
             ->livreurs()
+            ->actifs()
             ->orderBy('nom')
             ->orderBy('prenoms')
             ->paginate($perPage)
@@ -442,6 +444,12 @@ class PointsLivreurController extends Controller
 
         $nomComplet = trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? ''));
 
+        $dettes = $livreur->dettes()
+            ->orderByDesc('date_dette')
+            ->orderByDesc('id')
+            ->get();
+        $totalDettesReste = (int) $dettes->sum(fn ($dette) => (int) ($dette->reste ?? 0));
+
         return view('points_livreurs.situation_financiere', compact(
             'livreur',
             'nomComplet',
@@ -451,8 +459,48 @@ class PointsLivreurController extends Controller
             'montantPaye',
             'resteAPayer',
             'nbColis',
-            'versementsJournaliers'
+            'versementsJournaliers',
+            'dettes',
+            'totalDettesReste'
         ));
+    }
+
+    public function storeDetteLivreur(Request $request, Utilisateur $livreur)
+    {
+        if ($livreur->role !== 'livreur') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:' . implode(',', Dette::TYPES_LIVREUR),
+            'montant' => 'required|integer|min:1',
+            'date_dette' => 'required|date',
+            'date_echeance' => 'nullable|date|after_or_equal:date_dette',
+            'motifs' => 'nullable|string|max:1000',
+        ]);
+
+        $montant = (int) $validated['montant'];
+
+        Dette::create([
+            'livreur_id' => $livreur->id,
+            'type' => $validated['type'],
+            'remboursable' => true,
+            'nom_debiteur' => trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? '')),
+            'motifs' => $validated['motifs'] ?? '',
+            'montant_initial' => $montant,
+            'montant_actuel' => $montant,
+            'montants_payes' => 0,
+            'reste' => $montant,
+            'date_dette' => $validated['date_dette'],
+            'date_echeance' => $validated['date_echeance'] ?? null,
+            'statut' => 'En cours',
+        ]);
+
+        $montantFmt = number_format($montant, 0, ',', ' ');
+
+        return redirect()
+            ->back()
+            ->with('success', "Dette ({$validated['type']}) de {$montantFmt} XOF enregistrée pour ce livreur.");
     }
 
     public function effectuerPaiementSituation(Request $request, Utilisateur $livreur)

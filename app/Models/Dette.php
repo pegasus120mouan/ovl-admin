@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Dette extends Model
@@ -11,7 +12,11 @@ class Dette extends Model
 
     public $timestamps = false;
 
+    public const TYPES_LIVREUR = ['Perte', 'Prêt'];
+
     protected $fillable = [
+        'livreur_id',
+        'type',
         'remboursable',
         'nom_debiteur',
         'motifs',
@@ -38,6 +43,11 @@ class Dette extends Model
     public function versements(): HasMany
     {
         return $this->hasMany(Versement::class, 'dette_id');
+    }
+
+    public function livreur(): BelongsTo
+    {
+        return $this->belongsTo(Utilisateur::class, 'livreur_id');
     }
 
     public function scopeEnCours($query)

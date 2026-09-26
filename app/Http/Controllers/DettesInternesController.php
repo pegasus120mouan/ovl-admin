@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dette;
+use App\Models\Utilisateur;
 use App\Models\Versement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class DettesInternesController extends Controller
         }
 
         $dettes = Dette::query()
-            ->with(['versements' => function ($q) {
+            ->with(['livreur', 'versements' => function ($q) {
                 $q->orderByDesc('date_versement')->orderByDesc('id');
             }])
             ->orderByDesc('date_dette')
@@ -44,7 +45,40 @@ class DettesInternesController extends Controller
 
         $totalReste = (int) $dettes->sum(fn ($d) => (int) ($d->reste ?? 0));
 
-        return view('dettes_internes.index', compact('dettes', 'totalReste'));
+        $livreurs = Utilisateur::query()
+            ->livreurs()
+            ->orderByDesc('statut_compte')
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+
+        return view('dettes_internes.index', compact('dettes', 'totalReste', 'livreurs'));
+    }
+
+    private function validateDebiteur(Request $request): array
+    {
+        $validated = $request->validate([
+            'debiteur_type' => 'required|in:livreur,autre',
+            'livreur_id' => 'required_if:debiteur_type,livreur|nullable|integer|exists:utilisateurs,id',
+            'type_dette' => 'required_if:debiteur_type,livreur|nullable|in:' . implode(',', Dette::TYPES_LIVREUR),
+            'nom_debiteur' => 'required_if:debiteur_type,autre|nullable|string|max:255',
+        ]);
+
+        if ($validated['debiteur_type'] === 'livreur') {
+            $livreur = Utilisateur::query()->livreurs()->findOrFail($validated['livreur_id']);
+
+            return [
+                'livreur_id' => $livreur->id,
+                'nom_debiteur' => trim(($livreur->nom ?? '') . ' ' . ($livreur->prenoms ?? '')),
+                'type' => $validated['type_dette'],
+            ];
+        }
+
+        return [
+            'livreur_id' => null,
+            'nom_debiteur' => $validated['nom_debiteur'],
+            'type' => 'A payer',
+        ];
     }
 
     public function store(Request $request)
@@ -55,12 +89,12 @@ class DettesInternesController extends Controller
 
         $validated = $request->validate([
             'remboursable' => 'required|in:0,1',
-            'nom_debiteur' => 'required|string|max:255',
             'motifs' => 'nullable|string',
             'montant_initial' => 'required|integer|min:0',
             'date_dette' => 'required|date',
             'date_echeance' => 'nullable|date',
         ]);
+        $debiteur = $this->validateDebiteur($request);
 
         $montantInitial = (int) $validated['montant_initial'];
         $remboursable = (bool) ((int) $validated['remboursable']);
@@ -69,7 +103,9 @@ class DettesInternesController extends Controller
 
         $payload = [
             'remboursable' => $remboursable,
-            'nom_debiteur' => $validated['nom_debiteur'],
+            'livreur_id' => $debiteur['livreur_id'],
+            'nom_debiteur' => $debiteur['nom_debiteur'],
+            'type' => $debiteur['type'],
             'montant_initial' => $montantInitial,
             'montant_actuel' => $montantInitial,
             'montants_payes' => 0,
@@ -96,21 +132,23 @@ class DettesInternesController extends Controller
 
         $validated = $request->validate([
             'remboursable' => 'required|in:0,1',
-            'nom_debiteur' => 'required|string|max:255',
             'motifs' => 'nullable|string',
             'montant_actuel' => 'required|integer|min:0',
             'date_dette' => 'required|date',
             'date_echeance' => 'nullable|date',
         ]);
+        $debiteur = $this->validateDebiteur($request);
 
         $montantActuel = (int) $validated['montant_actuel'];
         $remboursable = (bool) ((int) $validated['remboursable']);
         $dateDette = $validated['date_dette'];
         $dateEcheance = $remboursable ? ($validated['date_echeance'] ?? null) : $dateDette;
 
-        DB::transaction(function () use ($dette, $validated, $montantActuel, $remboursable, $dateDette, $dateEcheance) {
+        DB::transaction(function () use ($dette, $validated, $debiteur, $montantActuel, $remboursable, $dateDette, $dateEcheance) {
             $dette->remboursable = $remboursable;
-            $dette->nom_debiteur = $validated['nom_debiteur'];
+            $dette->livreur_id = $debiteur['livreur_id'];
+            $dette->nom_debiteur = $debiteur['nom_debiteur'];
+            $dette->type = $debiteur['type'];
             $dette->montant_actuel = $montantActuel;
             $dette->date_dette = $dateDette;
             $dette->date_echeance = $dateEcheance;

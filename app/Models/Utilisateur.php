@@ -93,6 +93,11 @@ class Utilisateur extends Model
         return $this->hasMany(Imprevu::class, 'livreur_id');
     }
 
+    public function dettes(): HasMany
+    {
+        return $this->hasMany(Dette::class, 'livreur_id');
+    }
+
     public function scopeClients($query)
     {
         return $query->where('role', 'clients');

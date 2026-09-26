@@ -49,7 +49,13 @@
               @endphp
               <tr>
                 <td>{{ ($dette->remboursable ?? true) ? 'Oui' : 'Non' }}</td>
-                <td>{{ $dette->nom_debiteur }}</td>
+                <td>
+                  {{ $dette->nom_debiteur }}
+                  @if($dette->livreur_id)
+                    <br><span class="badge badge-primary">Livreur</span>
+                    <span class="badge {{ $dette->type === 'Perte' ? 'badge-danger' : 'badge-info' }}">{{ $dette->type }}</span>
+                  @endif
+                </td>
                 <td>{{ number_format($dette->montant_actuel ?? 0, 0, ',', ' ') }}</td>
                 <td class="text-success font-weight-bold">{{ number_format($dette->montants_payes ?? 0, 0, ',', ' ') }}</td>
                 <td><span class="font-weight-bold {{ ($dette->reste ?? 0) > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($dette->reste ?? 0, 0, ',', ' ') }}</span></td>
@@ -106,10 +112,7 @@
               <option value="0">Non (non remboursable)</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="font-weight-bold">Nom (personne/service)</label>
-            <input type="text" class="form-control" name="nom_debiteur" required>
-          </div>
+          @include('dettes_internes._debiteur_fields', ['dette' => null])
           <div class="form-group">
             <label class="font-weight-bold">Motifs</label>
             <textarea class="form-control" name="motifs" rows="2"></textarea>
@@ -155,10 +158,7 @@
               <option value="0" {{ !($dette->remboursable ?? true) ? 'selected' : '' }}>Non (non remboursable)</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="font-weight-bold">Nom</label>
-            <input type="text" class="form-control" name="nom_debiteur" value="{{ $dette->nom_debiteur }}" required>
-          </div>
+          @include('dettes_internes._debiteur_fields', ['dette' => $dette])
           <div class="form-group">
             <label class="font-weight-bold">Motifs</label>
             <textarea class="form-control" name="motifs" rows="2">{{ $dette->motifs ?? '' }}</textarea>
@@ -373,6 +373,29 @@
         document.getElementById('date_dette_edit_' + id),
         document.getElementById('date_echeance_edit_' + id)
       );
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    document.querySelectorAll('.js-debiteur').forEach(function (bloc) {
+      var typeEl = bloc.querySelector('.js-debiteur-type');
+      var livreurBloc = bloc.querySelector('.js-debiteur-livreur');
+      var autreBloc = bloc.querySelector('.js-debiteur-autre');
+      var livreurSelect = livreurBloc.querySelector('select[name="livreur_id"]');
+      var nomInput = autreBloc.querySelector('input[name="nom_debiteur"]');
+
+      var apply = function () {
+        var estLivreur = typeEl.value === 'livreur';
+        livreurBloc.style.display = estLivreur ? '' : 'none';
+        autreBloc.style.display = estLivreur ? 'none' : '';
+        livreurSelect.required = estLivreur;
+        nomInput.required = !estLivreur;
+      };
+
+      typeEl.addEventListener('change', apply);
+      apply();
     });
   })();
 </script>
