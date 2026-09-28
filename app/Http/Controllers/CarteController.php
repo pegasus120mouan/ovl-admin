@@ -18,6 +18,7 @@ class CarteController extends Controller
     public function index(Request $request): View
     {
         $vue = $this->requestedVue($request);
+        $parDefaut = ! $request->filled('vue') && ! $request->filled('zone');
 
         $regions = Carte::ofType(Carte::TYPE_REGIONS);
         $departements = Carte::ofType(Carte::TYPE_DEPARTEMENTS);
@@ -33,9 +34,19 @@ class CarteController extends Controller
         $zones = Carte::uniqueFeatureNames($regions?->geojson ?? $carteActive?->geojson ?? []);
         $zone = $this->requestedZone($request, $zones);
         $geojson = $carteActive?->geojson ?? ['type' => 'FeatureCollection', 'features' => []];
+        $communesAbidjan = $this->communesAbidjan($departements);
+        $communesSuperposees = null;
 
-        if ($zone !== '') {
+        if ($parDefaut && Carte::featureCount($communesAbidjan) > 0) {
+            $geojson = $communesAbidjan;
+        } elseif ($zone !== '') {
             $geojson = Carte::filterByZone($geojson, $zone, $regions?->geojson);
+
+            if (stripos($zone, 'abidjan') !== false && $vue === Carte::TYPE_REGIONS) {
+                $communesSuperposees = Carte::filterByZone($communesAbidjan, $zone, $regions?->geojson);
+            }
+        } else {
+            $parDefaut = false;
         }
 
         $zoneFeatures = $geojson['features'] ?? [];
@@ -55,15 +66,15 @@ class CarteController extends Controller
             ))->values();
         }
 
-        $boutiques = $this->boutiquesSurCarte($zoneFeatures, $zone !== '');
+        $boutiques = $this->boutiquesSurCarte($zoneFeatures, $zone !== '' || $parDefaut);
 
-        $titreCarte = $zone !== ''
-            ? $this->titreZone($zone)
-            : match ($vue) {
-                Carte::TYPE_DEPARTEMENTS => 'Carte des départements importés',
-                Carte::TYPE_POINTS => 'Localisation des points',
-                default => 'Carte des régions importées',
-            };
+        $titreCarte = match (true) {
+            $parDefaut => "Carte d'Abidjan — communes",
+            $zone !== '' => $this->titreZone($zone),
+            $vue === Carte::TYPE_DEPARTEMENTS => 'Carte des départements importés',
+            $vue === Carte::TYPE_POINTS => 'Localisation des points',
+            default => 'Carte des régions importées',
+        };
 
         $traces = Carte::featureCount($geojson);
 
@@ -88,7 +99,30 @@ class CarteController extends Controller
             'titreCarte' => $titreCarte,
             'traces' => $traces,
             'boutiquesCount' => count($boutiques),
+            'parDefaut' => $parDefaut,
+            'communesSuperposees' => $communesSuperposees,
         ]);
+    }
+
+    private function communesAbidjan(?Carte $departements): array
+    {
+        $geojson = $departements?->geojson ?? [];
+        $noms = array_map('mb_strtolower', Carte::uniqueFeatureNames($geojson));
+
+        if (array_intersect(['cocody', 'yopougon', 'abobo'], $noms) !== []) {
+            return $geojson;
+        }
+
+        $path = database_path('data/abidjan_communes_osm.geojson');
+        $payload = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+        if (! is_array($payload)) {
+            return ['type' => 'FeatureCollection', 'features' => []];
+        }
+
+        return Carte::enrichFeatureNames(
+            Carte::filterFeaturesForType(Carte::normalize($payload), Carte::TYPE_DEPARTEMENTS)
+        );
     }
 
     public function import(Request $request): RedirectResponse

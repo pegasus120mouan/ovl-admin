@@ -114,6 +114,18 @@
     transform: rotate(45deg);
     font-size: 12px;
   }
+  .commune-label {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: #1f2937;
+    font-weight: 700;
+    font-size: 12px;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  }
+  .commune-label::before {
+    display: none;
+  }
   .boutique-popup small {
     display: block;
     color: #6b7280;
@@ -128,7 +140,7 @@
     <button type="button" class="btn btn-carte" data-toggle="modal" data-target="#modalImporterGeojson">
       <i class="fas fa-plus-circle"></i> Importer GeoJSON
     </button>
-    <a href="{{ route('cartes.index', array_filter(['vue' => 'regions', 'zone' => $zone])) }}" class="btn btn-carte {{ $vue === 'regions' ? 'is-active' : '' }}">
+    <a href="{{ route('cartes.index', array_filter(['vue' => 'regions', 'zone' => $zone])) }}" class="btn btn-carte {{ $vue === 'regions' && ! $parDefaut ? 'is-active' : '' }}">
       <i class="fas fa-plus-circle"></i> Régions
     </a>
     <a href="{{ route('cartes.index', array_filter(['vue' => 'departements', 'zone' => $zone])) }}" class="btn btn-carte {{ $vue === 'departements' ? 'is-active' : '' }}">
@@ -144,7 +156,10 @@
 
   @if (count($zones))
   <div class="cartes-zones">
-    <a href="{{ route('cartes.index', ['vue' => $vue]) }}" class="btn btn-zone {{ $zone === '' ? 'is-active' : '' }}">
+    <a href="{{ route('cartes.index') }}" class="btn btn-zone {{ $parDefaut ? 'is-active' : '' }}">
+      Abidjan (communes)
+    </a>
+    <a href="{{ route('cartes.index', ['vue' => $vue]) }}" class="btn btn-zone {{ $zone === '' && ! $parDefaut ? 'is-active' : '' }}">
       Toutes
     </a>
     @foreach ($zones as $nomZone)
@@ -290,6 +305,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var vue = @json($vue);
+  var zone = @json($zone);
+  var parDefaut = @json($parDefaut);
+  var communesSuperposees = @json($communesSuperposees);
+  var villeAbidjanBounds = L.latLngBounds([5.23, -4.12], [5.45, -3.88]);
   var geojson = @json($carteActive->geojson ?? ['type' => 'FeatureCollection', 'features' => []]);
   var points = @json($points);
   var boutiques = @json($boutiques);
@@ -347,8 +366,30 @@ document.addEventListener('DOMContentLoaded', function () {
     onEachFeature: function (feature, layerItem) {
       var index = (geojson.features || []).indexOf(feature);
       layerItem.bindPopup('<strong>' + featureName(feature, index) + '</strong>');
+      if (parDefaut) {
+        layerItem.bindTooltip(featureName(feature, index), { permanent: true, direction: 'center', className: 'commune-label' });
+      }
     }
   }).addTo(map);
+
+  var communesLayer = null;
+  if (communesSuperposees && communesSuperposees.features && communesSuperposees.features.length) {
+    communesLayer = L.geoJSON(communesSuperposees, {
+      style: function () {
+        return {
+          color: '#374151',
+          weight: 1.5,
+          dashArray: '4 3',
+          fillOpacity: 0
+        };
+      },
+      onEachFeature: function (feature, layerItem) {
+        var index = communesSuperposees.features.indexOf(feature);
+        layerItem.bindPopup('<strong>' + featureName(feature, index) + '</strong>');
+        layerItem.bindTooltip(featureName(feature, index), { permanent: true, direction: 'center', className: 'commune-label' });
+      }
+    }).addTo(map);
+  }
 
   points.forEach(function (point) {
     L.marker([point.latitude, point.longitude]).addTo(map)
@@ -379,7 +420,13 @@ document.addEventListener('DOMContentLoaded', function () {
   boutiques.forEach(function (boutique) {
     bounds.extend([boutique.latitude, boutique.longitude]);
   });
-  if (bounds.isValid()) {
+  if (parDefaut && layer.getBounds().isValid()) {
+    map.fitBounds(layer.getBounds(), { padding: [16, 16] });
+  } else if (communesLayer && communesLayer.getBounds().isValid()) {
+    map.fitBounds(communesLayer.getBounds(), { padding: [16, 16] });
+  } else if (/abidjan/i.test(zone)) {
+    map.fitBounds(villeAbidjanBounds);
+  } else if (bounds.isValid()) {
     map.fitBounds(bounds, { padding: [24, 24] });
   }
 
