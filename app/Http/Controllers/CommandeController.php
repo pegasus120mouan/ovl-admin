@@ -552,15 +552,14 @@ class CommandeController extends Controller
     public function effectuerPaiement(Request $request)
     {
         $request->validate([
-            'date_livraison' => 'required|date',
+            'date_livraison' => 'nullable|date',
+            'date_validation_point' => 'nullable|date',
             'utilisateur_id' => 'required|integer',
             'operateur' => 'required|string',
         ]);
 
         // Mettre à jour toutes les commandes de cette date et ce client
-        Commande::where('utilisateur_id', $request->utilisateur_id)
-            ->whereDate('date_livraison', $request->date_livraison)
-            ->where('point_valide', true)
+        $this->commandesDuPointValide($request)
             ->update([
                 'paiement_effectue' => true,
                 'operateur_paiement' => $request->operateur,
@@ -573,14 +572,13 @@ class CommandeController extends Controller
     public function supprimerPointValide(Request $request)
     {
         $request->validate([
-            'date_livraison' => 'required|date',
+            'date_livraison' => 'nullable|date',
+            'date_validation_point' => 'nullable|date',
             'utilisateur_id' => 'required|integer',
         ]);
 
         // Annuler la validation du point (et le paiement associé le cas échéant)
-        $count = Commande::where('utilisateur_id', $request->utilisateur_id)
-            ->whereDate('date_livraison', $request->date_livraison)
-            ->where('point_valide', true)
+        $count = $this->commandesDuPointValide($request)
             ->update([
                 'point_valide' => false,
                 'date_validation_point' => null,
@@ -594,6 +592,21 @@ class CommandeController extends Controller
         }
 
         return redirect()->route('commandes.points-valides')->with('success', 'Point validé supprimé avec succès!');
+    }
+
+    private function commandesDuPointValide(Request $request)
+    {
+        return Commande::where('utilisateur_id', $request->utilisateur_id)
+            ->where('point_valide', true)
+            ->when(
+                $request->filled('date_livraison'),
+                fn ($query) => $query->whereDate('date_livraison', $request->date_livraison),
+                fn ($query) => $query->whereNull('date_livraison')
+            )
+            ->when(
+                $request->filled('date_validation_point'),
+                fn ($query) => $query->where('date_validation_point', $request->date_validation_point)
+            );
     }
 
     public function reclamations(Request $request)

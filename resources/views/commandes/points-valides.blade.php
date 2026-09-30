@@ -177,6 +177,7 @@
                         <p class="mb-0"><strong>Montant à payer:</strong> <span class="text-success font-weight-bold">{{ number_format($point->montant_total, 0, ',', ' ') }} XOF</span></p>
                     </div>
                     <input type="hidden" name="date_livraison" value="{{ $point->date_livraison }}">
+                    <input type="hidden" name="date_validation_point" value="{{ $point->getRawOriginal('date_validation_point') }}">
                     <input type="hidden" name="utilisateur_id" value="{{ $point->utilisateur_id }}">
                     <div class="form-group">
                         <label><strong>Choisir l'opérateur de paiement</strong></label>
@@ -234,6 +235,7 @@
                         </p>
                     </div>
                     <input type="hidden" name="date_livraison" value="{{ $point->date_livraison }}">
+                    <input type="hidden" name="date_validation_point" value="{{ $point->getRawOriginal('date_validation_point') }}">
                     <input type="hidden" name="utilisateur_id" value="{{ $point->utilisateur_id }}">
                     <div class="alert alert-warning mt-3 mb-0">
                         <i class="fas fa-info-circle mr-1"></i>
