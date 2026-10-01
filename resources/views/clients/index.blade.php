@@ -84,7 +84,46 @@
           </div>
         </div>
         <div class="card-body table-responsive p-0">
-          <table class="table table-striped table-hover">
+          <style>
+            table.clients-table {
+              width: 100%;
+              table-layout: fixed;
+            }
+            table.clients-table .col-photo { width: 90px; }
+            table.clients-table .col-contact { width: 140px; }
+            table.clients-table .col-boutique { width: 240px; }
+            table.clients-table .col-statut { width: 110px; }
+            table.clients-table .col-actions { width: 180px; }
+            table.clients-table td.boutique-cell {
+              width: 240px;
+              padding: 8px 10px;
+              vertical-align: middle;
+            }
+            table.clients-table .boutique-badge {
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box;
+              text-align: center;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              padding: 0.5em 0.65em;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.3;
+            }
+          </style>
+          <table class="table table-striped table-hover clients-table">
+            <colgroup>
+              <col class="col-photo">
+              <col>
+              <col>
+              <col class="col-contact">
+              <col class="col-boutique">
+              <col class="col-statut">
+              <col class="col-actions">
+            </colgroup>
             <thead>
               <tr>
                 <th>Photo</th>
@@ -97,35 +136,45 @@
               </tr>
             </thead>
             <tbody>
+              @php
+                $defaultClientPhoto = asset('dist/img/default-150x150.png');
+              @endphp
               @forelse($clients as $client)
               <tr>
                 <td>
                   @php
+                    $photoUrl = $defaultClientPhoto;
                     $avatarKey = $client->avatar ?: null;
-                    if (!$avatarKey || $avatarKey === 'default.jpg') {
-                      $avatarKey = 'utilisateurs/utilisateurs.png';
-                    } elseif (!str_contains($avatarKey, '/')) {
+                    if ($avatarKey === 'default.jpg' || $avatarKey === 'utilisateurs/utilisateurs.png') {
+                      $avatarKey = null;
+                    } elseif ($avatarKey && !str_contains($avatarKey, '/')) {
                       $avatarKey = 'utilisateurs/' . $avatarKey;
                     }
-                    $disk = \Illuminate\Support\Facades\Storage::disk('r2');
-                    try {
-                      $logoUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
-                    } catch (\Exception $e) {
-                      $logoUrl = $disk->url($avatarKey);
+                    if ($avatarKey) {
+                      try {
+                        $disk = \Illuminate\Support\Facades\Storage::disk('r2');
+                        try {
+                          $photoUrl = $disk->temporaryUrl($avatarKey, now()->addMinutes(30));
+                        } catch (\Exception $e) {
+                          $photoUrl = $disk->url($avatarKey);
+                        }
+                      } catch (\Throwable $e) {
+                        $photoUrl = $defaultClientPhoto;
+                      }
                     }
                   @endphp
                   <a href="{{ route('clients.show', $client) }}">
-                    <img src="{{ $logoUrl }}" alt="Logo" class="img-circle" style="width: 50px; height: 50px; object-fit: cover;" />
+                    <img src="{{ $photoUrl }}" alt="" class="img-circle" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.onerror=null;this.src='{{ $defaultClientPhoto }}';" />
                   </a>
                 </td>
                 <td>{{ $client->nom }}</td>
                 <td>{{ $client->prenoms }}</td>
                 <td>{{ $client->contact }}</td>
-                <td>
+                <td class="boutique-cell">
                   @if($client->boutique)
-                    <span class="badge badge-info">{{ $client->boutique->nom }}</span>
+                    <span class="badge badge-info boutique-badge">{{ $client->boutique->nom }}</span>
                   @else
-                    <span class="badge badge-secondary">Aucune</span>
+                    <span class="badge badge-secondary boutique-badge">Aucune</span>
                   @endif
                 </td>
                 <td>
