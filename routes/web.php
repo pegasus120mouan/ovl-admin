@@ -196,6 +196,12 @@ Route::patch('users/administrateurs/{admin}/toggle-statut', [UtilisateurControll
 Route::patch('users/livreurs/{livreur}/toggle-statut', [UtilisateurController::class, 'toggleLivreurStatutWeb'])->name('users.livreurs.toggle-statut');
 Route::patch('users/commerciaux/{commercial}/toggle-statut', [UtilisateurController::class, 'toggleCommercialStatutWeb'])->name('users.commerciaux.toggle-statut');
 
+Route::get('users/managers', [UtilisateurController::class, 'managers'])->name('users.managers');
+Route::post('users/managers', [UtilisateurController::class, 'storeManagerWeb'])->name('users.managers.store');
+Route::put('users/managers/{manager}', [UtilisateurController::class, 'updateManagerWeb'])->name('users.managers.update');
+Route::delete('users/managers/{manager}', [UtilisateurController::class, 'destroyManagerWeb'])->name('users.managers.destroy');
+Route::patch('users/managers/{manager}/toggle-statut', [UtilisateurController::class, 'toggleManagerStatutWeb'])->name('users.managers.toggle-statut');
+
 Route::get('users/gestion-statuts', [UtilisateurController::class, 'gestionStatutsWeb'])->name('users.gestion-statuts');
 Route::patch('users/{utilisateur}/toggle-statut', [UtilisateurController::class, 'toggleStatutWeb'])->name('users.toggle-statut');
 

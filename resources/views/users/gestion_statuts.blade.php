@@ -85,6 +85,7 @@
                   <option value="clients" {{ request('role') === 'clients' ? 'selected' : '' }}>Clients</option>
                   <option value="gestionnaire" {{ request('role') === 'gestionnaire' ? 'selected' : '' }}>Gestionnaires</option>
                   <option value="commercial" {{ request('role') === 'commercial' ? 'selected' : '' }}>Commerciaux</option>
+                  <option value="manager" {{ request('role') === 'manager' ? 'selected' : '' }}>Managers</option>
                 </select>
               </div>
 
@@ -142,6 +143,7 @@
                         'clients' => 'Client',
                         'gestionnaire' => 'Gestionnaire',
                         'commercial' => 'Commercial',
+                        'manager' => 'Manager',
                       ];
                       $roleIcon = match ($role) {
                         'admin' => 'admin.png',

@@ -49,6 +49,10 @@ class AuthController extends Controller
                 return back()->withErrors(['login' => 'Les commerciaux doivent se connecter sur l\'espace commercial.'])->withInput();
             }
 
+            if ($utilisateur->role === 'manager') {
+                return back()->withErrors(['login' => 'Les managers doivent se connecter sur l\'espace CRM.'])->withInput();
+            }
+
             Session::put('utilisateur', [
                 'id' => $utilisateur->id,
                 'nom' => $utilisateur->nom,

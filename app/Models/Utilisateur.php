@@ -123,6 +123,11 @@ class Utilisateur extends Model
         return $query->where('role', 'commercial');
     }
 
+    public function scopeManagers($query)
+    {
+        return $query->where('role', 'manager');
+    }
+
     public function scopeActifs($query)
     {
         return $query->where('statut_compte', 1);

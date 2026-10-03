@@ -546,6 +546,12 @@
                 </a>
               </li>
               <li class="nav-item">
+                <a href="{{ route('users.managers') }}" class="nav-link">
+                  <i class="fas fa-user-tag nav-icon"></i>
+                  <p>Liste des managers</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a href="{{route('users.gestion-statuts')}}" class="nav-link">
                   <i class="fas fa-lock nav-icon"></i>
                   <p>Gestion des statuts</p>

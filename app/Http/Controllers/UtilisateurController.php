@@ -619,6 +619,103 @@ class UtilisateurController extends Controller
         return redirect()->route('users.commerciaux');
     }
 
+    public function managers(Request $request)
+    {
+        $perPage = $request->integer('per_page', 20);
+
+        $managers = Utilisateur::query()
+            ->managers()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $managersActifs = Utilisateur::query()->managers()->where('statut_compte', 1)->count();
+        $managersInactifs = Utilisateur::query()->managers()->where('statut_compte', 0)->count();
+        $commerciauxTotal = Utilisateur::query()->commerciaux()->count();
+
+        return view('users.managers', compact(
+            'managers',
+            'managersActifs',
+            'managersInactifs',
+            'commerciauxTotal'
+        ));
+    }
+
+    public function storeManagerWeb(Request $request)
+    {
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'contact' => 'required|string|max:15',
+            'login' => 'required|string|max:255|unique:utilisateurs,login',
+            'password' => 'required|string|min:4',
+            'statut_compte' => 'nullable|boolean',
+        ]);
+
+        Utilisateur::create([
+            'nom' => $validated['nom'],
+            'prenoms' => $validated['prenoms'],
+            'contact' => $validated['contact'],
+            'login' => $validated['login'],
+            'password' => hash('sha256', $validated['password']),
+            'role' => 'manager',
+            'statut_compte' => $validated['statut_compte'] ?? 1,
+            'avatar' => 'default.jpg',
+        ]);
+
+        return redirect()->route('users.managers')->with('success', 'Manager ajouté avec succès');
+    }
+
+    public function updateManagerWeb(Request $request, Utilisateur $manager)
+    {
+        if (($manager->role ?? null) !== 'manager') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'contact' => 'required|string|max:15',
+            'login' => 'required|string|max:255|unique:utilisateurs,login,'.$manager->id,
+            'password' => 'nullable|string|min:4',
+            'statut_compte' => 'nullable|boolean',
+        ]);
+
+        $data = collect($validated)->except('password')->all();
+
+        if (! empty($validated['password'])) {
+            $data['password'] = hash('sha256', $validated['password']);
+        }
+
+        $manager->update($data);
+
+        return redirect()->route('users.managers')->with('success', 'Manager modifié avec succès');
+    }
+
+    public function destroyManagerWeb(Utilisateur $manager)
+    {
+        if (($manager->role ?? null) !== 'manager') {
+            abort(404);
+        }
+
+        $manager->delete();
+
+        return redirect()->route('users.managers')->with('success', 'Manager supprimé avec succès');
+    }
+
+    public function toggleManagerStatutWeb(Utilisateur $manager)
+    {
+        if (($manager->role ?? null) !== 'manager') {
+            abort(404);
+        }
+
+        $manager->statut_compte = ! $manager->statut_compte;
+        $manager->save();
+
+        return redirect()->route('users.managers');
+    }
+
     public function showLivreurWeb(Request $request, Utilisateur $livreur)
     {
         if (($livreur->role ?? null) !== 'livreur') {
