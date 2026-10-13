@@ -563,7 +563,7 @@
                           rows="2"
                           maxlength="255"
                           placeholder="Ex. paiement non reçu, référence introuvable..."></textarea>
-                <small class="text-muted">Le livreur verra ce motif dans l'application.</small>
+                <small class="text-muted">Ce motif est conservé avec la déclaration (visible au survol du statut « Rejeté »).</small>
               </div>
             </div>
             <div class="modal-footer">
