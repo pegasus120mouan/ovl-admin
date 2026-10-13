@@ -125,7 +125,20 @@ class PointsLivreurController extends Controller
             ->get()
             ->groupBy('utilisateur_id');
 
-        $livreurs->getCollection()->transform(function ($livreur) use ($montantsMois, $commandesParLivreurJour, $pointsParLivreurJour) {
+        // Nombre de paiements déclarés en attente de validation, par livreur.
+        $paiementsEnAttenteParLivreur = collect();
+        if (Schema::hasTable('paiements_livreurs')) {
+            $paiementsEnAttenteParLivreur = PaiementLivreur::query()
+                ->where('statut', PaiementLivreur::STATUT_EN_ATTENTE)
+                ->whereIn('utilisateur_id', $livreurIds)
+                ->selectRaw('utilisateur_id, COUNT(*) as nb')
+                ->groupBy('utilisateur_id')
+                ->pluck('nb', 'utilisateur_id');
+        }
+
+        $livreurs->getCollection()->transform(function ($livreur) use ($montantsMois, $commandesParLivreurJour, $pointsParLivreurJour, $paiementsEnAttenteParLivreur) {
+            $livreur->paiements_en_attente = (int) ($paiementsEnAttenteParLivreur[$livreur->id] ?? 0);
+
             $stats = $montantsMois->get($livreur->id);
             $livreur->montant_mois = (int) ($stats->montant ?? 0);
             $livreur->nb_colis_mois = (int) ($stats->nb_colis ?? 0);

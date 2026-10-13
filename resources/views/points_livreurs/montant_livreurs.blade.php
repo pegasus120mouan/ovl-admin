@@ -68,6 +68,7 @@
                 <th>Montant à payer</th>
                 <th>Payé</th>
                 <th>Reste à payer</th>
+                <th class="text-center">Demandes en attente</th>
                 <th>Statut</th>
                 <th>Actions</th>
               </tr>
@@ -91,6 +92,15 @@
                   <td class="font-weight-bold {{ ($livreur->reste_a_payer ?? 0) > 0 ? 'text-warning' : 'text-muted' }}">
                     {{ number_format($livreur->reste_a_payer ?? 0, 0, ',', ' ') }} XOF
                   </td>
+                  <td class="text-center">
+                    @if($livreur->statut_compte)
+                      <a href="{{ route('points-livreurs.situation-financiere', $livreur) }}" title="Voir les demandes en attente">
+                        <span class="badge {{ ($livreur->paiements_en_attente ?? 0) > 0 ? 'badge-danger' : 'badge-secondary' }}" style="font-size: 13px; min-width: 24px;">{{ $livreur->paiements_en_attente ?? 0 }}</span>
+                      </a>
+                    @else
+                      <span class="badge badge-secondary" style="font-size: 13px; min-width: 24px;">{{ $livreur->paiements_en_attente ?? 0 }}</span>
+                    @endif
+                  </td>
                   <td>
                     @if($livreur->statut_compte)
                       <span class="badge badge-success">Actif</span>
@@ -112,7 +122,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="8" class="text-center">Aucun livreur trouvé</td>
+                  <td colspan="9" class="text-center">Aucun livreur trouvé</td>
                 </tr>
               @endforelse
             </tbody>
