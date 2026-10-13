@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Commande;
+use App\Models\PaiementLivreur;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -57,6 +59,20 @@ class AppServiceProvider extends ServiceProvider
             // Nombre de réclamations en attente
             $reclamationsEnAttente = \App\Models\Reclamation::where('statut', 'en_attente')->count();
 
+            // Nombre de paiements déclarés par les livreurs en attente de validation
+            // (0 si la migration n'a pas encore été exécutée).
+            $paiementsLivreursEnAttente = 0;
+            try {
+                if (Schema::hasTable('paiements_livreurs')) {
+                    $paiementsLivreursEnAttente = PaiementLivreur::query()
+                        ->where('statut', PaiementLivreur::STATUT_EN_ATTENTE)
+                        ->count();
+                }
+            } catch (\Throwable $e) {
+                $paiementsLivreursEnAttente = 0;
+            }
+
+            $view->with('paiementsLivreursEnAttente', $paiementsLivreursEnAttente);
             $view->with('commandesRecuesAujourdHui', $commandesRecuesAujourdHui);
             $view->with('pointsValidesNonPayes', $pointsValidesNonPayes);
             $view->with('reclamationsEnAttente', $reclamationsEnAttente);

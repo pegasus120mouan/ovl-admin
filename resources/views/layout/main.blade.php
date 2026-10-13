@@ -458,13 +458,16 @@
               <p>
                 Gestion Financière
                 <i class="right fas fa-angle-left"></i>
+                <span class="badge badge-danger right" title="Paiements livreurs en attente de validation">{{ $paiementsLivreursEnAttente ?? 0 }}</span>
               </p>
             </a>
             <ul class="nav nav-treeview">
               <li class="nav-item">
                 <a href="{{ route('points-livreurs.montant-livreurs') }}" class="nav-link">
                   <i class="fas fa-hand-holding-usd nav-icon"></i>
-                  <p>Montant des Livreurs</p>
+                  <p>Montant des Livreurs
+                    <span class="badge badge-danger ml-1" title="Paiements en attente de validation">{{ $paiementsLivreursEnAttente ?? 0 }}</span>
+                  </p>
                 </a>
               </li>
               <li class="nav-item">
