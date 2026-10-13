@@ -49,6 +49,14 @@ class PaiementLivreur extends Model
     }
 
     /**
+     * URL du logo de l'opérateur (null si le type est inconnu ou le fichier absent).
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->typePaiement?->logo_url;
+    }
+
+    /**
      * Nom de l'opérateur : issu de type_paiement, avec repli sur la valeur enregistrée
      * (anciennes déclarations ou opérateur supprimé).
      */

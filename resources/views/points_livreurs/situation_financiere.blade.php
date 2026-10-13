@@ -232,7 +232,13 @@
                 <td class="font-weight-bold">
                   {{ number_format((int) $paiement->montant, 0, ',', ' ') }} XOF
                 </td>
-                <td><span class="badge badge-secondary px-2 py-1">{{ $paiement->operateur }}</span></td>
+                <td>
+                  @if($paiement->logo_url)
+                    <img src="{{ $paiement->logo_url }}" alt="{{ $paiement->operateur }}" title="{{ $paiement->operateur }}" style="height: 30px; max-width: 80px; object-fit: contain;">
+                  @else
+                    <span class="badge badge-secondary px-2 py-1">{{ $paiement->operateur }}</span>
+                  @endif
+                </td>
                 <td>{{ $paiement->reference ?: '—' }}</td>
                 <td class="text-center">
                   @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
@@ -460,7 +466,13 @@
               <div class="text-center mb-3">
                 <div class="text-muted small text-uppercase">Montant déclaré</div>
                 <div class="font-weight-bold" style="font-size: 2rem; line-height: 1.2;">{{ number_format($montantDeclare, 0, ',', ' ') }} XOF</div>
-                <span class="badge badge-secondary px-3 py-2 mt-1">{{ $paiement->operateur }}</span>
+                <div class="mt-1">
+                  @if($paiement->logo_url)
+                    <img src="{{ $paiement->logo_url }}" alt="{{ $paiement->operateur }}" title="{{ $paiement->operateur }}" style="height: 36px; max-width: 110px; object-fit: contain;">
+                  @else
+                    <span class="badge badge-secondary px-3 py-2">{{ $paiement->operateur }}</span>
+                  @endif
+                </div>
               </div>
 
               <table class="table table-sm table-borderless mb-3">
