@@ -214,6 +214,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
+              <th>Livreur</th>
               <th>Déclaré le</th>
               <th>Jour concerné</th>
               <th>Montant</th>
@@ -226,6 +227,7 @@
           <tbody>
             @foreach($paiementsDeclares as $paiement)
               <tr>
+                <td class="font-weight-bold">{{ $nomComplet }}</td>
                 <td>{{ $paiement->created_at ? $paiement->created_at->format('d/m/Y H:i') : '—' }}</td>
                 <td>{{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</td>
                 <td class="font-weight-bold">
@@ -249,13 +251,13 @@
                   @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
                     <form action="{{ route('points-livreurs.paiements-declares.valider', [$livreur, $paiement]) }}" method="POST" class="d-inline">
                       @csrf
-                      <button type="submit" class="btn btn-sm btn-success mb-1" onclick="return confirm('Valider ce paiement et l\'ajouter au versement du jour ?');">
+                      <button type="submit" class="btn btn-sm btn-success mb-1" onclick="return confirm('Valider le paiement de {{ e(addslashes($nomComplet)) }} et l\'ajouter au versement du jour ?');">
                         <i class="fas fa-check mr-1"></i> Valider
                       </button>
                     </form>
                     <form action="{{ route('points-livreurs.paiements-declares.rejeter', [$livreur, $paiement]) }}" method="POST" class="d-inline">
                       @csrf
-                      <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Rejeter ce paiement déclaré ?');">
+                      <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Rejeter le paiement déclaré par {{ e(addslashes($nomComplet)) }} ?');">
                         <i class="fas fa-times mr-1"></i> Rejeter
                       </button>
                     </form>
