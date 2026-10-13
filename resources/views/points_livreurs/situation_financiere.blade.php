@@ -204,11 +204,10 @@
   </div>
 
   @if($paiementsDeclares->isNotEmpty())
-    @php($nbEnAttente = $paiementsDeclares->where('statut', \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)->count())
     <div class="card mb-4">
       <div class="card-header bg-warning d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
         <h5 class="card-title mb-0"><i class="fas fa-mobile-alt mr-2"></i> Paiements déclarés depuis l'application</h5>
-        <span class="badge badge-light">{{ $nbEnAttente }} en attente</span>
+        <span class="badge badge-light">{{ $paiementsDeclares->where('statut', \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)->count() }} en attente</span>
       </div>
       <div class="card-body table-responsive p-0">
         <table class="table table-striped mb-0">
