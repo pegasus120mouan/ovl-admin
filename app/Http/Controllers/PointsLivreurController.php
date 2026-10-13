@@ -471,11 +471,14 @@ class PointsLivreurController extends Controller
             Carbon::parse($v['date'])->toDateString() => (int) ($v['reste_a_payer'] ?? 0),
         ]);
 
-        // Paiements déclarés depuis l'application livreur (en attente de validation + derniers traités).
+        // Paiements déclarés depuis l'application livreur : ceux en attente et les rejetés.
+        // Une demande validée disparaît de la liste (le montant est déjà dans le versement du jour).
         $paiementsDeclares = collect();
         if (Schema::hasTable('paiements_livreurs')) {
             $paiementsDeclares = PaiementLivreur::query()
+                ->with('typePaiement')
                 ->where('utilisateur_id', $livreur->id)
+                ->where('statut', '!=', PaiementLivreur::STATUT_VALIDE)
                 ->orderByRaw("CASE WHEN statut = ? THEN 0 ELSE 1 END", [PaiementLivreur::STATUT_EN_ATTENTE])
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')

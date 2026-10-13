@@ -13,13 +13,12 @@ class PaiementLivreur extends Model
     public const STATUT_VALIDE = 'Validé';
     public const STATUT_REJETE = 'Rejeté';
 
-    public const MODES = ['OM', 'Wave', 'Moov Money'];
-
     protected $fillable = [
         'utilisateur_id',
         'date_versement',
         'montant',
         'montant_valide',
+        'type_paiement_id',
         'mode_paiement',
         'reference',
         'statut',
@@ -37,5 +36,22 @@ class PaiementLivreur extends Model
     public function livreur(): BelongsTo
     {
         return $this->belongsTo(Utilisateur::class, 'utilisateur_id');
+    }
+
+    /**
+     * Opérateur de paiement (table type_paiement : Orange, MTN, Wave, Djamo...).
+     */
+    public function typePaiement(): BelongsTo
+    {
+        return $this->belongsTo(TypePaiement::class, 'type_paiement_id');
+    }
+
+    /**
+     * Nom de l'opérateur : issu de type_paiement, avec repli sur la valeur enregistrée
+     * (anciennes déclarations ou opérateur supprimé).
+     */
+    public function getOperateurAttribute(): string
+    {
+        return (string) ($this->typePaiement->operateur ?? $this->mode_paiement ?? '');
     }
 }

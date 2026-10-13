@@ -231,17 +231,12 @@
                 <td>{{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</td>
                 <td class="font-weight-bold">
                   {{ number_format((int) $paiement->montant, 0, ',', ' ') }} XOF
-                  @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_VALIDE && (int) $paiement->montant_valide !== (int) $paiement->montant)
-                    <br><small class="text-muted">Validé : {{ number_format((int) $paiement->montant_valide, 0, ',', ' ') }} XOF</small>
-                  @endif
                 </td>
-                <td><span class="badge badge-secondary px-2 py-1">{{ $paiement->mode_paiement }}</span></td>
+                <td><span class="badge badge-secondary px-2 py-1">{{ $paiement->operateur }}</span></td>
                 <td>{{ $paiement->reference ?: '—' }}</td>
                 <td class="text-center">
                   @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
                     <span class="badge badge-warning px-3 py-2">En attente</span>
-                  @elseif($paiement->statut === \App\Models\PaiementLivreur::STATUT_VALIDE)
-                    <span class="badge badge-success px-3 py-2">Validé</span>
                   @else
                     <span class="badge badge-danger px-3 py-2" @if($paiement->motif_rejet) title="{{ $paiement->motif_rejet }}" @endif>Rejeté</span>
                   @endif
@@ -465,7 +460,7 @@
               <div class="text-center mb-3">
                 <div class="text-muted small text-uppercase">Montant déclaré</div>
                 <div class="font-weight-bold" style="font-size: 2rem; line-height: 1.2;">{{ number_format($montantDeclare, 0, ',', ' ') }} XOF</div>
-                <span class="badge badge-secondary px-3 py-2 mt-1">{{ $paiement->mode_paiement }}</span>
+                <span class="badge badge-secondary px-3 py-2 mt-1">{{ $paiement->operateur }}</span>
               </div>
 
               <table class="table table-sm table-borderless mb-3">
@@ -545,7 +540,7 @@
               <div class="mb-3 p-3 bg-light rounded">
                 <p class="mb-1"><strong>Livreur :</strong> {{ $nomComplet }}</p>
                 <p class="mb-1"><strong>Jour concerné :</strong> {{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</p>
-                <p class="mb-1"><strong>Montant :</strong> {{ number_format($montantDeclare, 0, ',', ' ') }} XOF ({{ $paiement->mode_paiement }})</p>
+                <p class="mb-1"><strong>Montant :</strong> {{ number_format($montantDeclare, 0, ',', ' ') }} XOF ({{ $paiement->operateur }})</p>
                 <p class="mb-0"><strong>Référence :</strong> {{ $paiement->reference ?: '—' }}</p>
               </div>
               <div class="form-group mb-0">
