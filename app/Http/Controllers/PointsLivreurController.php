@@ -7,11 +7,14 @@ use App\Models\Commande;
 use App\Models\CoutLivraison;
 use App\Models\Dette;
 use App\Models\GainJournalierTransfert;
+use App\Models\PaiementLivreur;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PointsLivreurController extends Controller
@@ -450,6 +453,18 @@ class PointsLivreurController extends Controller
             ->get();
         $totalDettesReste = (int) $dettes->sum(fn ($dette) => (int) ($dette->reste ?? 0));
 
+        // Paiements déclarés depuis l'application livreur (en attente de validation + derniers traités).
+        $paiementsDeclares = collect();
+        if (Schema::hasTable('paiements_livreurs')) {
+            $paiementsDeclares = PaiementLivreur::query()
+                ->where('utilisateur_id', $livreur->id)
+                ->orderByRaw("CASE WHEN statut = ? THEN 0 ELSE 1 END", [PaiementLivreur::STATUT_EN_ATTENTE])
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->limit(30)
+                ->get();
+        }
+
         return view('points_livreurs.situation_financiere', compact(
             'livreur',
             'nomComplet',
@@ -461,8 +476,84 @@ class PointsLivreurController extends Controller
             'nbColis',
             'versementsJournaliers',
             'dettes',
-            'totalDettesReste'
+            'totalDettesReste',
+            'paiementsDeclares'
         ));
+    }
+
+    public function validerPaiementDeclare(Request $request, Utilisateur $livreur, PaiementLivreur $paiement)
+    {
+        if ($livreur->role !== 'livreur' || (int) $paiement->utilisateur_id !== (int) $livreur->id) {
+            abort(404);
+        }
+
+        $resultat = DB::transaction(function () use ($livreur, $paiement) {
+            // Verrou pour éviter une double validation.
+            $paiement = PaiementLivreur::query()->lockForUpdate()->find($paiement->id);
+
+            if (!$paiement || $paiement->statut !== PaiementLivreur::STATUT_EN_ATTENTE) {
+                return ['ok' => false, 'message' => 'Ce paiement a déjà été traité.'];
+            }
+
+            $date = Carbon::parse($paiement->date_versement)->toDateString();
+            $versement = $this->solderVersementJour($livreur->id, $date, (int) $paiement->montant);
+
+            if (!$versement['ok']) {
+                // Le jour est déjà soldé : le paiement déclaré ne peut plus être appliqué.
+                $paiement->statut = PaiementLivreur::STATUT_REJETE;
+                $paiement->motif_rejet = 'Jour déjà soldé';
+                $paiement->traite_le = now();
+                $paiement->save();
+
+                return ['ok' => false, 'message' => $versement['message']];
+            }
+
+            $paiement->statut = PaiementLivreur::STATUT_VALIDE;
+            $paiement->montant_valide = (int) $versement['montant'];
+            $paiement->traite_le = now();
+            $paiement->save();
+
+            return ['ok' => true, 'montant' => (int) $versement['montant'], 'declare' => (int) $paiement->montant];
+        });
+
+        if (!$resultat['ok']) {
+            return redirect()->back()->with('error', $resultat['message']);
+        }
+
+        $montantFmt = number_format($resultat['montant'], 0, ',', ' ');
+        $message = "Paiement validé : {$montantFmt} XOF enregistrés.";
+        if ($resultat['montant'] < $resultat['declare']) {
+            $declareFmt = number_format($resultat['declare'], 0, ',', ' ');
+            $message .= " (déclaré : {$declareFmt} XOF, limité au reste à payer du jour)";
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    public function rejeterPaiementDeclare(Request $request, Utilisateur $livreur, PaiementLivreur $paiement)
+    {
+        if ($livreur->role !== 'livreur' || (int) $paiement->utilisateur_id !== (int) $livreur->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'motif_rejet' => 'nullable|string|max:255',
+        ]);
+
+        $updated = PaiementLivreur::query()
+            ->where('id', $paiement->id)
+            ->where('statut', PaiementLivreur::STATUT_EN_ATTENTE)
+            ->update([
+                'statut' => PaiementLivreur::STATUT_REJETE,
+                'motif_rejet' => $validated['motif_rejet'] ?? null,
+                'traite_le' => now(),
+            ]);
+
+        if (!$updated) {
+            return redirect()->back()->with('error', 'Ce paiement a déjà été traité.');
+        }
+
+        return redirect()->back()->with('success', 'Paiement déclaré rejeté.');
     }
 
     public function storeDetteLivreur(Request $request, Utilisateur $livreur)

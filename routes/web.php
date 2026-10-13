@@ -73,6 +73,8 @@ Route::get('points-livreurs/{livreur}/situation-financiere', [PointsLivreurContr
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement', [PointsLivreurController::class, 'effectuerPaiementSituation'])->name('points-livreurs.situation-financiere.paiement');
 Route::post('points-livreurs/{livreur}/situation-financiere/paiement-masse', [PointsLivreurController::class, 'effectuerPaiementSituationMasse'])->name('points-livreurs.situation-financiere.paiement-masse');
 Route::post('points-livreurs/{livreur}/situation-financiere/annuler-paiement', [PointsLivreurController::class, 'annulerPaiementSituation'])->name('points-livreurs.situation-financiere.annuler-paiement');
+Route::post('points-livreurs/{livreur}/paiements-declares/{paiement}/valider', [PointsLivreurController::class, 'validerPaiementDeclare'])->name('points-livreurs.paiements-declares.valider');
+Route::post('points-livreurs/{livreur}/paiements-declares/{paiement}/rejeter', [PointsLivreurController::class, 'rejeterPaiementDeclare'])->name('points-livreurs.paiements-declares.rejeter');
 Route::post('points-livreurs/{livreur}/dettes', [PointsLivreurController::class, 'storeDetteLivreur'])->name('points-livreurs.dettes.store');
 Route::get('points-livreurs/liste-montants', [PointsLivreurController::class, 'listeMontants'])->name('points-livreurs.liste-montants');
 Route::get('points-livreurs/print-depot', [PointsLivreurController::class, 'printDepot'])->name('points-livreurs.print-depot');

@@ -203,6 +203,74 @@
     @endif
   </div>
 
+  @if($paiementsDeclares->isNotEmpty())
+    @php($nbEnAttente = $paiementsDeclares->where('statut', \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)->count())
+    <div class="card mb-4">
+      <div class="card-header bg-warning d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+        <h5 class="card-title mb-0"><i class="fas fa-mobile-alt mr-2"></i> Paiements déclarés depuis l'application</h5>
+        <span class="badge badge-light">{{ $nbEnAttente }} en attente</span>
+      </div>
+      <div class="card-body table-responsive p-0">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Déclaré le</th>
+              <th>Jour concerné</th>
+              <th>Montant</th>
+              <th>Mode</th>
+              <th>Référence</th>
+              <th class="text-center">Statut</th>
+              <th class="text-center" style="width: 200px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($paiementsDeclares as $paiement)
+              <tr>
+                <td>{{ $paiement->created_at ? $paiement->created_at->format('d/m/Y H:i') : '—' }}</td>
+                <td>{{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</td>
+                <td class="font-weight-bold">
+                  {{ number_format((int) $paiement->montant, 0, ',', ' ') }} XOF
+                  @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_VALIDE && (int) $paiement->montant_valide !== (int) $paiement->montant)
+                    <br><small class="text-muted">Validé : {{ number_format((int) $paiement->montant_valide, 0, ',', ' ') }} XOF</small>
+                  @endif
+                </td>
+                <td><span class="badge badge-secondary px-2 py-1">{{ $paiement->mode_paiement }}</span></td>
+                <td>{{ $paiement->reference ?: '—' }}</td>
+                <td class="text-center">
+                  @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
+                    <span class="badge badge-warning px-3 py-2">En attente</span>
+                  @elseif($paiement->statut === \App\Models\PaiementLivreur::STATUT_VALIDE)
+                    <span class="badge badge-success px-3 py-2">Validé</span>
+                  @else
+                    <span class="badge badge-danger px-3 py-2" @if($paiement->motif_rejet) title="{{ $paiement->motif_rejet }}" @endif>Rejeté</span>
+                  @endif
+                </td>
+                <td class="text-center">
+                  @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
+                    <form action="{{ route('points-livreurs.paiements-declares.valider', [$livreur, $paiement]) }}" method="POST" class="d-inline">
+                      @csrf
+                      <button type="submit" class="btn btn-sm btn-success mb-1" onclick="return confirm('Valider ce paiement et l\'ajouter au versement du jour ?');">
+                        <i class="fas fa-check mr-1"></i> Valider
+                      </button>
+                    </form>
+                    <form action="{{ route('points-livreurs.paiements-declares.rejeter', [$livreur, $paiement]) }}" method="POST" class="d-inline">
+                      @csrf
+                      <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Rejeter ce paiement déclaré ?');">
+                        <i class="fas fa-times mr-1"></i> Rejeter
+                      </button>
+                    </form>
+                  @else
+                    <span class="text-muted">—</span>
+                  @endif
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  @endif
+
   <div class="card mb-4">
     <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
       <h5 class="card-title mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i> Dettes du livreur</h5>
