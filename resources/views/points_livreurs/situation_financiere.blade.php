@@ -249,18 +249,12 @@
                 </td>
                 <td class="text-center">
                   @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
-                    <form action="{{ route('points-livreurs.paiements-declares.valider', [$livreur, $paiement]) }}" method="POST" class="d-inline">
-                      @csrf
-                      <button type="submit" class="btn btn-sm btn-success mb-1" onclick="return confirm('Valider le paiement de {{ e(addslashes($nomComplet)) }} et l\'ajouter au versement du jour ?');">
-                        <i class="fas fa-check mr-1"></i> Valider
-                      </button>
-                    </form>
-                    <form action="{{ route('points-livreurs.paiements-declares.rejeter', [$livreur, $paiement]) }}" method="POST" class="d-inline">
-                      @csrf
-                      <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Rejeter le paiement déclaré par {{ e(addslashes($nomComplet)) }} ?');">
-                        <i class="fas fa-times mr-1"></i> Rejeter
-                      </button>
-                    </form>
+                    <button type="button" class="btn btn-sm btn-success mb-1" data-toggle="modal" data-target="#modalValiderPaiement{{ $paiement->id }}">
+                      <i class="fas fa-check mr-1"></i> Valider
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger mb-1" data-toggle="modal" data-target="#modalRejeterPaiement{{ $paiement->id }}">
+                      <i class="fas fa-times mr-1"></i> Rejeter
+                    </button>
                   @else
                     <span class="text-muted">—</span>
                   @endif
@@ -449,6 +443,136 @@
   @endif
 @endforeach
 
+@foreach($paiementsDeclares as $paiement)
+  @if($paiement->statut === \App\Models\PaiementLivreur::STATUT_EN_ATTENTE)
+    @php
+      $jourPaiement = $paiement->date_versement ? $paiement->date_versement->toDateString() : null;
+      $resteJour = $jourPaiement !== null ? ($resteParJour[$jourPaiement] ?? null) : null;
+      $montantDeclare = (int) $paiement->montant;
+      $montantApplique = $resteJour !== null ? min($montantDeclare, $resteJour) : $montantDeclare;
+      $resteApres = $resteJour !== null ? max(0, $resteJour - $montantApplique) : null;
+    @endphp
+
+    <div class="modal fade" id="modalValiderPaiement{{ $paiement->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i>Valider le paiement</h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer"><span>&times;</span></button>
+          </div>
+          <form action="{{ route('points-livreurs.paiements-declares.valider', [$livreur, $paiement]) }}" method="POST" class="form-paiement-declare">
+            @csrf
+            <div class="modal-body">
+              <div class="text-center mb-3">
+                <div class="text-muted small text-uppercase">Montant déclaré</div>
+                <div class="font-weight-bold" style="font-size: 2rem; line-height: 1.2;">{{ number_format($montantDeclare, 0, ',', ' ') }} XOF</div>
+                <span class="badge badge-secondary px-3 py-2 mt-1">{{ $paiement->mode_paiement }}</span>
+              </div>
+
+              <table class="table table-sm table-borderless mb-3">
+                <tbody>
+                  <tr>
+                    <td class="text-muted" style="width: 45%;">Livreur</td>
+                    <td class="font-weight-bold text-right">{{ $nomComplet }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Jour concerné</td>
+                    <td class="font-weight-bold text-right">{{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Déclaré le</td>
+                    <td class="text-right">{{ $paiement->created_at ? $paiement->created_at->format('d/m/Y à H:i') : '—' }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Référence</td>
+                    <td class="text-right">{{ $paiement->reference ?: '—' }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Reste à payer du jour</td>
+                    <td class="text-right font-weight-bold text-warning">
+                      {{ $resteJour !== null ? number_format($resteJour, 0, ',', ' ') . ' XOF' : '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              @if($resteJour !== null && $resteJour <= 0)
+                <div class="alert alert-danger mb-0">
+                  <i class="fas fa-exclamation-triangle mr-1"></i>
+                  Ce jour est déjà soldé. La validation sera refusée et la déclaration sera rejetée.
+                </div>
+              @elseif($resteJour !== null && $montantApplique < $montantDeclare)
+                <div class="alert alert-warning mb-0">
+                  <i class="fas fa-exclamation-triangle mr-1"></i>
+                  Le montant dépasse le reste à payer du jour : seuls
+                  <strong>{{ number_format($montantApplique, 0, ',', ' ') }} XOF</strong> seront enregistrés.
+                </div>
+              @else
+                <div class="alert alert-success mb-0">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  <strong>{{ number_format($montantApplique, 0, ',', ' ') }} XOF</strong> seront ajoutés au versement du jour.
+                  @if($resteApres !== null)
+                    Reste après validation : <strong>{{ number_format($resteApres, 0, ',', ' ') }} XOF</strong>.
+                  @endif
+                </div>
+              @endif
+
+              <p class="text-muted small mt-3 mb-0">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Vérifiez la réception de l'argent (Mobile Money) avant de valider. Cette action met à jour le montant payé.
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light border" data-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-check mr-1"></i> Confirmer la validation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalRejeterPaiement{{ $paiement->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title"><i class="fas fa-times-circle mr-2"></i>Rejeter le paiement</h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer"><span>&times;</span></button>
+          </div>
+          <form action="{{ route('points-livreurs.paiements-declares.rejeter', [$livreur, $paiement]) }}" method="POST" class="form-paiement-declare">
+            @csrf
+            <div class="modal-body">
+              <div class="mb-3 p-3 bg-light rounded">
+                <p class="mb-1"><strong>Livreur :</strong> {{ $nomComplet }}</p>
+                <p class="mb-1"><strong>Jour concerné :</strong> {{ $paiement->date_versement ? $paiement->date_versement->format('d/m/Y') : 'N/A' }}</p>
+                <p class="mb-1"><strong>Montant :</strong> {{ number_format($montantDeclare, 0, ',', ' ') }} XOF ({{ $paiement->mode_paiement }})</p>
+                <p class="mb-0"><strong>Référence :</strong> {{ $paiement->reference ?: '—' }}</p>
+              </div>
+              <div class="form-group mb-0">
+                <label class="font-weight-bold" for="motifRejet{{ $paiement->id }}">Motif du rejet <span class="text-muted font-weight-normal">(optionnel)</span></label>
+                <textarea id="motifRejet{{ $paiement->id }}"
+                          name="motif_rejet"
+                          class="form-control"
+                          rows="2"
+                          maxlength="255"
+                          placeholder="Ex. paiement non reçu, référence introuvable..."></textarea>
+                <small class="text-muted">Le livreur verra ce motif dans l'application.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light border" data-dismiss="modal">Retour</button>
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-times mr-1"></i> Confirmer le rejet
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
+@endforeach
+
 <div class="modal fade" id="modalSolderSelection" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -511,6 +635,13 @@ $(function () {
     $('#modalSolderTotal').text(total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '));
     $('#modalSolderDates').text(dates.join(', '));
     $('#modalSolderSelection').modal('show');
+  });
+
+  // Évite les doubles clics sur la validation / le rejet d'un paiement déclaré.
+  $('form.form-paiement-declare').on('submit', function () {
+    $(this).find('button[type=submit]')
+      .prop('disabled', true)
+      .html('<i class="fas fa-spinner fa-spin mr-1"></i> Traitement...');
   });
 
   $('#confirmSolderSelection').on('click', function () {

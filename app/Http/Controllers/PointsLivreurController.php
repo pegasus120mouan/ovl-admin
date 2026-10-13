@@ -466,6 +466,11 @@ class PointsLivreurController extends Controller
             ->get();
         $totalDettesReste = (int) $dettes->sum(fn ($dette) => (int) ($dette->reste ?? 0));
 
+        // Reste à payer par jour (pour afficher le contexte dans la validation d'un paiement déclaré).
+        $resteParJour = $versementsAll->mapWithKeys(fn ($v) => [
+            Carbon::parse($v['date'])->toDateString() => (int) ($v['reste_a_payer'] ?? 0),
+        ]);
+
         // Paiements déclarés depuis l'application livreur (en attente de validation + derniers traités).
         $paiementsDeclares = collect();
         if (Schema::hasTable('paiements_livreurs')) {
@@ -490,7 +495,8 @@ class PointsLivreurController extends Controller
             'versementsJournaliers',
             'dettes',
             'totalDettesReste',
-            'paiementsDeclares'
+            'paiementsDeclares',
+            'resteParJour'
         ));
     }
 
