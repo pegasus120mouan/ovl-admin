@@ -472,13 +472,13 @@ class PointsLivreurController extends Controller
         ]);
 
         // Paiements déclarés depuis l'application livreur : ceux en attente et les rejetés.
-        // Une demande validée disparaît de la liste (le montant est déjà dans le versement du jour).
+        // Une demande validée (ou validée puis annulée) disparaît de la liste.
         $paiementsDeclares = collect();
         if (Schema::hasTable('paiements_livreurs')) {
             $paiementsDeclares = PaiementLivreur::query()
                 ->with('typePaiement')
                 ->where('utilisateur_id', $livreur->id)
-                ->where('statut', '!=', PaiementLivreur::STATUT_VALIDE)
+                ->whereIn('statut', [PaiementLivreur::STATUT_EN_ATTENTE, PaiementLivreur::STATUT_REJETE])
                 ->orderByRaw("CASE WHEN statut = ? THEN 0 ELSE 1 END", [PaiementLivreur::STATUT_EN_ATTENTE])
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
@@ -766,6 +766,19 @@ class PointsLivreurController extends Controller
         $montantAnnule = (int) $point->montant_verse;
         $point->montant_verse = 0;
         $point->save();
+
+        // Les paiements déclarés par le livreur et déjà validés pour ce jour ne sont plus valables :
+        // on les passe à « Annulé » pour que l'historique (application mobile) reste cohérent.
+        if (Schema::hasTable('paiements_livreurs')) {
+            PaiementLivreur::query()
+                ->where('utilisateur_id', $livreurId)
+                ->whereDate('date_versement', $date)
+                ->where('statut', PaiementLivreur::STATUT_VALIDE)
+                ->update([
+                    'statut' => PaiementLivreur::STATUT_ANNULE,
+                    'traite_le' => now(),
+                ]);
+        }
 
         return [
             'ok' => true,

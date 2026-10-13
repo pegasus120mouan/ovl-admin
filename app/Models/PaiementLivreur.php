@@ -12,6 +12,8 @@ class PaiementLivreur extends Model
     public const STATUT_EN_ATTENTE = 'En attente';
     public const STATUT_VALIDE = 'Validé';
     public const STATUT_REJETE = 'Rejeté';
+    // Paiement validé puis annulé par l'admin (le versement du jour a été remis à zéro).
+    public const STATUT_ANNULE = 'Annulé';
 
     protected $fillable = [
         'utilisateur_id',
