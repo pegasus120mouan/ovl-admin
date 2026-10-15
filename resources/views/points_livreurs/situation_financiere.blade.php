@@ -19,6 +19,10 @@
         </div>
       </div>
       <div class="d-flex flex-wrap" style="gap: 8px;">
+        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#modalHistoriquePaiements">
+          <i class="fas fa-history mr-1"></i> Historique des paiements
+          <span class="badge badge-light text-info ml-1">{{ $historiquePaiements->count() }}</span>
+        </button>
         <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modalCreerDette">
           <i class="fas fa-file-invoice-dollar mr-1"></i> Créer une dette
         </button>
@@ -579,6 +583,129 @@
   @endif
 @endforeach
 
+@php
+  $totalPaiementsHistorique = (int) $historiquePaiements->reject->estAnnulation()->sum('montant');
+  $totalAnnulationsHistorique = (int) $historiquePaiements->filter->estAnnulation()->sum('montant');
+@endphp
+<div class="modal fade" id="modalHistoriquePaiements" tabindex="-1" role="dialog" aria-labelledby="modalHistoriquePaiementsTitre" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="modalHistoriquePaiementsTitre"><i class="fas fa-history mr-2"></i>Historique des paiements — {{ $nomComplet }}</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-4 mb-2 mb-md-0">
+            <div class="border rounded p-3 h-100" style="border-left: 4px solid #28a745 !important;">
+              <div class="text-success font-weight-bold small text-uppercase">Total versé</div>
+              <h4 class="font-weight-bold mb-0">{{ number_format($totalPaiementsHistorique, 0, ',', ' ') }} XOF</h4>
+            </div>
+          </div>
+          <div class="col-md-4 mb-2 mb-md-0">
+            <div class="border rounded p-3 h-100" style="border-left: 4px solid #dc3545 !important;">
+              <div class="text-danger font-weight-bold small text-uppercase">Annulations</div>
+              <h4 class="font-weight-bold mb-0">{{ number_format($totalAnnulationsHistorique, 0, ',', ' ') }} XOF</h4>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded p-3 h-100" style="border-left: 4px solid #17a2b8 !important;">
+              <div class="text-info font-weight-bold small text-uppercase">Net encaissé</div>
+              <h4 class="font-weight-bold mb-0">{{ number_format($totalPaiementsHistorique - $totalAnnulationsHistorique, 0, ',', ' ') }} XOF</h4>
+            </div>
+          </div>
+        </div>
+
+        @if($historiquePaiements->isEmpty())
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-receipt fa-2x mb-2 d-block"></i>
+            Aucun paiement enregistré pour ce livreur.
+          </div>
+        @else
+          <div class="form-row mb-3">
+            <div class="col-md-8 mb-2 mb-md-0">
+              <div class="input-group">
+                <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>
+                <input type="text" id="historiqueRecherche" class="form-control" placeholder="Rechercher une date, un montant, une origine...">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <select id="historiqueType" class="form-control">
+                <option value="">Paiements et annulations</option>
+                <option value="{{ \App\Models\HistoriquePaiementLivreur::TYPE_PAIEMENT }}">Paiements uniquement</option>
+                <option value="{{ \App\Models\HistoriquePaiementLivreur::TYPE_ANNULATION }}">Annulations uniquement</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0" id="tableHistoriquePaiements">
+              <thead class="thead-light">
+                <tr>
+                  <th>Enregistré le</th>
+                  <th>Jour concerné</th>
+                  <th>Opération</th>
+                  <th>Origine</th>
+                  <th>Saisi par</th>
+                  <th class="text-right">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($historiquePaiements as $ligne)
+                  <tr data-type="{{ $ligne->type }}">
+                    <td class="text-nowrap">
+                      @if($ligne->created_at)
+                        {{ $ligne->created_at->format('d/m/Y') }}
+                        <small class="text-muted d-block">{{ $ligne->created_at->format('H:i') }}</small>
+                      @else
+                        <span class="text-muted">—</span>
+                      @endif
+                    </td>
+                    <td class="text-nowrap">{{ $ligne->date_versement->format('d/m/Y') }}</td>
+                    <td>
+                      @if($ligne->estAnnulation())
+                        <span class="badge badge-danger">Annulation</span>
+                      @else
+                        <span class="badge badge-success">Paiement</span>
+                      @endif
+                    </td>
+                    <td>
+                      {{ $ligne->libelleOrigine() }}
+                      @if($ligne->paiementLivreur)
+                        <small class="text-muted d-block">
+                          {{ $ligne->paiementLivreur->operateur }}
+                          @if($ligne->paiementLivreur->reference) · Réf. {{ $ligne->paiementLivreur->reference }} @endif
+                        </small>
+                      @endif
+                    </td>
+                    <td>{{ $ligne->auteur ? trim($ligne->auteur->nom . ' ' . $ligne->auteur->prenoms) : '—' }}</td>
+                    <td class="text-right font-weight-bold text-nowrap {{ $ligne->estAnnulation() ? 'text-danger' : 'text-success' }}">
+                      {{ $ligne->estAnnulation() ? '−' : '+' }} {{ number_format($ligne->montant, 0, ',', ' ') }} XOF
+                    </td>
+                  </tr>
+                @endforeach
+                <tr id="historiqueAucunResultat" style="display: none;">
+                  <td colspan="6" class="text-center text-muted py-4">Aucun paiement ne correspond à la recherche.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          @if($historiquePaiements->contains('origine', \App\Models\HistoriquePaiementLivreur::ORIGINE_REPRISE))
+            <small class="text-muted d-block mt-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              « Historique antérieur » : paiements enregistrés avant la mise en place du journal, regroupés par jour (sans heure ni auteur).
+            </small>
+          @endif
+        @endif
+      </div>
+      <div class="modal-footer">
+        <span class="mr-auto text-muted small"><span id="historiqueNbLignes">{{ $historiquePaiements->count() }}</span> opération(s)</span>
+        <button type="button" class="btn btn-light border" data-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="modalSolderSelection" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -653,6 +780,26 @@ $(function () {
   $('#confirmSolderSelection').on('click', function () {
     $('#formSolderMasse').submit();
   });
+
+  function filtrerHistorique() {
+    var recherche = ($('#historiqueRecherche').val() || '').toLowerCase().trim();
+    var type = $('#historiqueType').val();
+    var visibles = 0;
+
+    $('#tableHistoriquePaiements tbody tr[data-type]').each(function () {
+      var ligne = $(this);
+      var visible = (!type || ligne.data('type') === type) &&
+        (!recherche || ligne.text().toLowerCase().indexOf(recherche) !== -1);
+      ligne.toggle(visible);
+      if (visible) visibles++;
+    });
+
+    $('#historiqueAucunResultat').toggle(visibles === 0);
+    $('#historiqueNbLignes').text(visibles);
+  }
+
+  $('#historiqueRecherche').on('input', filtrerHistorique);
+  $('#historiqueType').on('change', filtrerHistorique);
 
   refreshSelection();
 });

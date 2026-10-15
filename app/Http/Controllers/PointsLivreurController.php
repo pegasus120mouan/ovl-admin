@@ -7,6 +7,7 @@ use App\Models\Commande;
 use App\Models\CoutLivraison;
 use App\Models\Dette;
 use App\Models\GainJournalierTransfert;
+use App\Models\HistoriquePaiementLivreur;
 use App\Models\PaiementLivreur;
 use App\Models\PointsLivreur;
 use App\Models\Utilisateur;
@@ -486,8 +487,20 @@ class PointsLivreurController extends Controller
                 ->get();
         }
 
+        $historiquePaiements = collect();
+        if (Schema::hasTable('historique_paiements_livreurs')) {
+            $historiquePaiements = HistoriquePaiementLivreur::query()
+                ->with(['auteur:id,nom,prenoms', 'paiementLivreur.typePaiement'])
+                ->where('utilisateur_id', $livreur->id)
+                ->orderByDesc('created_at')
+                ->orderByDesc('date_versement')
+                ->orderByDesc('id')
+                ->get();
+        }
+
         return view('points_livreurs.situation_financiere', compact(
             'livreur',
+            'historiquePaiements',
             'nomComplet',
             'dateDebut',
             'dateFin',
@@ -518,7 +531,13 @@ class PointsLivreurController extends Controller
             }
 
             $date = Carbon::parse($paiement->date_versement)->toDateString();
-            $versement = $this->solderVersementJour($livreur->id, $date, (int) $paiement->montant);
+            $versement = $this->solderVersementJour(
+                $livreur->id,
+                $date,
+                (int) $paiement->montant,
+                HistoriquePaiementLivreur::ORIGINE_APPLICATION,
+                $paiement->id
+            );
 
             if (!$versement['ok']) {
                 // Le jour est déjà soldé : le paiement déclaré ne peut plus être appliqué.
@@ -636,7 +655,7 @@ class PointsLivreurController extends Controller
         ]);
 
         $date = Carbon::parse($validated['date'])->toDateString();
-        $resultat = $this->solderVersementJour($livreur->id, $date, (int) $validated['montant']);
+        $resultat = $this->solderVersementJour($livreur->id, $date, (int) $validated['montant'], HistoriquePaiementLivreur::ORIGINE_MANUEL);
 
         if (!$resultat['ok']) {
             return redirect()->back()->with('error', $resultat['message']);
@@ -681,7 +700,7 @@ class PointsLivreurController extends Controller
 
         foreach (array_unique($validated['dates']) as $date) {
             $date = Carbon::parse($date)->toDateString();
-            $resultat = $this->solderVersementJour($livreur->id, $date, null);
+            $resultat = $this->solderVersementJour($livreur->id, $date, null, HistoriquePaiementLivreur::ORIGINE_MASSE);
 
             if ($resultat['ok']) {
                 $joursSoldes++;
@@ -767,6 +786,8 @@ class PointsLivreurController extends Controller
         $point->montant_verse = 0;
         $point->save();
 
+        $this->journaliserPaiement($livreurId, $date, HistoriquePaiementLivreur::TYPE_ANNULATION, HistoriquePaiementLivreur::ORIGINE_MANUEL, $montantAnnule);
+
         // Les paiements déclarés par le livreur et déjà validés pour ce jour ne sont plus valables :
         // on les passe à « Annulé » pour que l'historique (application mobile) reste cohérent.
         if (Schema::hasTable('paiements_livreurs')) {
@@ -787,8 +808,13 @@ class PointsLivreurController extends Controller
         ];
     }
 
-    private function solderVersementJour(int $livreurId, string $date, ?int $montantDemande): array
-    {
+    private function solderVersementJour(
+        int $livreurId,
+        string $date,
+        ?int $montantDemande,
+        string $origine,
+        ?int $paiementLivreurId = null
+    ): array {
         $point = $this->ensurePointRecetteForDay($livreurId, $date);
 
         $montantGlobal = (int) Commande::query()
@@ -816,12 +842,37 @@ class PointsLivreurController extends Controller
         $point->montant_verse = $montantVerse + $montant;
         $point->save();
 
+        $this->journaliserPaiement($livreurId, $date, HistoriquePaiementLivreur::TYPE_PAIEMENT, $origine, $montant, $paiementLivreurId);
+
         return [
             'ok' => true,
             'montant' => $montant,
             'reste' => max(0, $montantDu - (int) $point->montant_verse),
             'message' => null,
         ];
+    }
+
+    private function journaliserPaiement(
+        int $livreurId,
+        string $date,
+        string $type,
+        string $origine,
+        int $montant,
+        ?int $paiementLivreurId = null
+    ): void {
+        if ($montant <= 0 || !Schema::hasTable('historique_paiements_livreurs')) {
+            return;
+        }
+
+        HistoriquePaiementLivreur::create([
+            'utilisateur_id' => $livreurId,
+            'date_versement' => $date,
+            'type' => $type,
+            'origine' => $origine,
+            'montant' => $montant,
+            'paiement_livreur_id' => $paiementLivreurId,
+            'enregistre_par' => ((int) data_get(session('utilisateur'), 'id', 0)) ?: null,
+        ]);
     }
 
     private function ensurePointRecetteForDay(int $livreurId, string $date): PointsLivreur
